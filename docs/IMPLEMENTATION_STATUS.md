@@ -174,17 +174,28 @@ This document tracks the implementation progress of the WorkOS Terraform Provide
 
 ## Phase 7: Release & Registry Publication
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress
 
-### Scope
+### Completed ✅
 
 | Item | Description |
 |------|-------------|
-| GPG key setup | For signing releases |
-| Registry account | Terraform Registry configuration |
-| Pre-release testing | Full acceptance test suite |
-| v1.0.0 release | Tag and publish |
-| Registry verification | Confirm provider is installable |
+| Initial commit | 73 files, 12,210 lines of code |
+| Release guide | `docs/RELEASE_GUIDE.md` |
+| GoReleaser config | `.goreleaser.yml` ready |
+| Release workflow | `.github/workflows/release.yml` ready |
+
+### Remaining Steps (Manual)
+
+| Step | Description |
+|------|-------------|
+| 1. GPG Key | Generate/export GPG key for signing |
+| 2. GitHub Secrets | Add `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` |
+| 3. Push to GitHub | `git push -u origin main` |
+| 4. Terraform Registry | Register provider and add GPG public key |
+| 5. Create Tag | `git tag -a v1.0.0 -m "Release v1.0.0"` |
+| 6. Push Tag | `git push origin v1.0.0` |
+| 7. Verify | Check GitHub release and Terraform Registry |
 
 ---
 
@@ -316,9 +327,9 @@ terraform-provider-workos/
 | Phase 4: Webhook | ✅ Complete | 100% |
 | Phase 5: User | ✅ Complete | 100% |
 | Phase 6: Documentation | ✅ Complete | 100% |
-| Phase 7: Release | ⬜ Not Started | 0% |
+| Phase 7: Release | 🟡 In Progress | 50% |
 
-**Current Progress:** Phases 0-6 complete (Ready for release!)
+**Current Progress:** Phases 0-6 complete, Phase 7 ready for manual steps
 
 ---
 
