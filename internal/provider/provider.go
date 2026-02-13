@@ -178,6 +178,7 @@ func (p *WorkOSProvider) Resources(ctx context.Context) []func() resource.Resour
 		NewWebhookResource,
 		NewUserResource,
 		NewOrganizationMembershipResource,
+		NewOrganizationRoleResource,
 	}
 }
 
@@ -189,6 +190,7 @@ func (p *WorkOSProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewDirectoryUserDataSource,
 		NewDirectoryGroupDataSource,
 		NewUserDataSource,
+		NewOrganizationRoleDataSource,
 	}
 }
 
