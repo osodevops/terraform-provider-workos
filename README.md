@@ -123,6 +123,23 @@ resource "workos_organization_membership" "admin" {
 }
 ```
 
+### Managing Roles
+
+```hcl
+resource "workos_organization_role" "billing_admin" {
+  organization_id = workos_organization.example.id
+  slug            = "billing-admin"
+  name            = "Billing Admin"
+  description     = "Can manage billing and invoices"
+}
+
+resource "workos_organization_role" "viewer" {
+  organization_id = workos_organization.example.id
+  slug            = "viewer"
+  name            = "Viewer"
+}
+```
+
 ### Data Sources
 
 ```hcl
@@ -146,6 +163,12 @@ data "workos_directory_user" "synced" {
   directory_id = workos_directory.okta.id
   email        = "employee@acme.com"
 }
+
+# Look up organization role by slug
+data "workos_organization_role" "billing" {
+  organization_id = workos_organization.example.id
+  slug            = "billing-admin"
+}
 ```
 
 ## Resources
@@ -158,6 +181,7 @@ data "workos_directory_user" "synced" {
 | `workos_webhook` | Manages webhook endpoints |
 | `workos_user` | Manages AuthKit users |
 | `workos_organization_membership` | Manages user-organization memberships |
+| `workos_organization_role` | Manages organization authorization roles |
 
 ## Data Sources
 
@@ -169,6 +193,7 @@ data "workos_directory_user" "synced" {
 | `workos_directory_user` | Retrieves directory-synced user |
 | `workos_directory_group` | Retrieves directory-synced group |
 | `workos_user` | Retrieves AuthKit user by ID or email |
+| `workos_organization_role` | Retrieves organization role by slug or ID |
 
 ## Development
 
