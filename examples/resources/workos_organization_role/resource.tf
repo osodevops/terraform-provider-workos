@@ -1,7 +1,7 @@
 # Manage a WorkOS Organization Role
 resource "workos_organization_role" "billing_admin" {
   organization_id = workos_organization.example.id
-  slug            = "billing-admin"
+  slug            = "org-billing-admin"
   name            = "Billing Admin"
   description     = "Can manage billing and invoices"
 }
@@ -9,7 +9,7 @@ resource "workos_organization_role" "billing_admin" {
 # Role without a description
 resource "workos_organization_role" "viewer" {
   organization_id = workos_organization.example.id
-  slug            = "viewer"
+  slug            = "org-viewer"
   name            = "Viewer"
 }
 

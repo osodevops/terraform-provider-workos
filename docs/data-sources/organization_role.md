@@ -10,7 +10,7 @@ description: |-
   
   data "workos_organization_role" "billing_admin" {
     organization_id = "org_01HXYZ..."
-    slug            = "billing-admin"
+    slug            = "org-billing-admin"
   }
   
   By ID
@@ -34,7 +34,7 @@ You can look up a role by its slug or ID within an organization.
 ```hcl
 data "workos_organization_role" "billing_admin" {
   organization_id = "org_01HXYZ..."
-  slug            = "billing-admin"
+  slug            = "org-billing-admin"
 }
 ```
 
@@ -53,7 +53,7 @@ data "workos_organization_role" "example" {
 # Look up an organization role by slug
 data "workos_organization_role" "by_slug" {
   organization_id = "org_01HXYZ..."
-  slug            = "billing-admin"
+  slug            = "org-billing-admin"
 }
 
 output "role_name_by_slug" {

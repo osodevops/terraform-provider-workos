@@ -14,7 +14,7 @@ import (
 
 func TestAccOrganizationRoleResource_Basic(t *testing.T) {
 	orgName := fmt.Sprintf("tf-acc-test-%d", time.Now().UnixNano())
-	slug := fmt.Sprintf("test-role-%d", time.Now().UnixNano())
+	slug := fmt.Sprintf("org-test-role-%d", time.Now().UnixNano())
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -62,7 +62,7 @@ func TestAccOrganizationRoleResource_Basic(t *testing.T) {
 
 func TestAccOrganizationRoleResource_NoDescription(t *testing.T) {
 	orgName := fmt.Sprintf("tf-acc-test-%d", time.Now().UnixNano())
-	slug := fmt.Sprintf("test-role-%d", time.Now().UnixNano())
+	slug := fmt.Sprintf("org-test-role-%d", time.Now().UnixNano())
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },

@@ -63,7 +63,7 @@ to organization memberships. Roles are identified by their slug within an organi
 ` + "```hcl" + `
 resource "workos_organization_role" "billing_admin" {
   organization_id = workos_organization.example.id
-  slug            = "billing-admin"
+  slug            = "org-billing-admin"
   name            = "Billing Admin"
   description     = "Can manage billing and invoices"
 }
@@ -74,7 +74,7 @@ resource "workos_organization_role" "billing_admin" {
 Organization roles can be imported using a composite key of organization ID and slug:
 
 ` + "```shell" + `
-terraform import workos_organization_role.example org_01HXYZ.../billing-admin
+terraform import workos_organization_role.example org_01HXYZ.../org-billing-admin
 ` + "```" + `
 `,
 		Attributes: map[string]schema.Attribute{

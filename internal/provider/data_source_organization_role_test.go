@@ -13,7 +13,7 @@ import (
 
 func TestAccOrganizationRoleDataSource_BySlug(t *testing.T) {
 	orgName := fmt.Sprintf("tf-acc-test-%d", time.Now().UnixNano())
-	slug := fmt.Sprintf("test-role-%d", time.Now().UnixNano())
+	slug := fmt.Sprintf("org-test-role-%d", time.Now().UnixNano())
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -43,7 +43,7 @@ func TestAccOrganizationRoleDataSource_BySlug(t *testing.T) {
 
 func TestAccOrganizationRoleDataSource_ByID(t *testing.T) {
 	orgName := fmt.Sprintf("tf-acc-test-%d", time.Now().UnixNano())
-	slug := fmt.Sprintf("test-role-%d", time.Now().UnixNano())
+	slug := fmt.Sprintf("org-test-role-%d", time.Now().UnixNano())
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },

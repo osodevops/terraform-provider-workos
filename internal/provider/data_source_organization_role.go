@@ -61,7 +61,7 @@ You can look up a role by its slug or ID within an organization.
 ` + "```hcl" + `
 data "workos_organization_role" "billing_admin" {
   organization_id = "org_01HXYZ..."
-  slug            = "billing-admin"
+  slug            = "org-billing-admin"
 }
 ` + "```" + `
 
