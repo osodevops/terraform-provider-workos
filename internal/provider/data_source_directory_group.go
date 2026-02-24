@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -197,8 +198,8 @@ func (d *DirectoryGroupDataSource) Read(ctx context.Context, req datasource.Read
 	config.OrganizationID = types.StringValue(group.OrganizationID)
 	config.Name = types.StringValue(group.Name)
 	config.IdpID = types.StringValue(group.IdpID)
-	config.CreatedAt = types.StringValue(group.CreatedAt.Format("2006-01-02T15:04:05Z"))
-	config.UpdatedAt = types.StringValue(group.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	config.CreatedAt = types.StringValue(group.CreatedAt.Format(time.RFC3339))
+	config.UpdatedAt = types.StringValue(group.UpdatedAt.Format(time.RFC3339))
 
 	tflog.Info(ctx, "Read directory group", map[string]any{
 		"id":   group.ID,

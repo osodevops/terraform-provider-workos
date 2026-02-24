@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -101,6 +102,9 @@ terraform import workos_organization.example org_01HXYZ...
 				Description:         "The timestamp when the organization was last updated.",
 				MarkdownDescription: "The timestamp when the organization was last updated (RFC3339 format).",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -172,8 +176,8 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Map response body to schema and populate Computed attribute values
 	plan.ID = types.StringValue(org.ID)
-	plan.CreatedAt = types.StringValue(org.CreatedAt.Format("2006-01-02T15:04:05Z"))
-	plan.UpdatedAt = types.StringValue(org.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	plan.CreatedAt = types.StringValue(org.CreatedAt.Format(time.RFC3339))
+	plan.UpdatedAt = types.StringValue(org.UpdatedAt.Format(time.RFC3339))
 
 	tflog.Info(ctx, "Created organization", map[string]any{
 		"id":   org.ID,
@@ -218,8 +222,8 @@ func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadReques
 
 	// Map response to state
 	state.Name = types.StringValue(org.Name)
-	state.CreatedAt = types.StringValue(org.CreatedAt.Format("2006-01-02T15:04:05Z"))
-	state.UpdatedAt = types.StringValue(org.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	state.CreatedAt = types.StringValue(org.CreatedAt.Format(time.RFC3339))
+	state.UpdatedAt = types.StringValue(org.UpdatedAt.Format(time.RFC3339))
 
 	// Map domains
 	if len(org.Domains) > 0 {
@@ -258,6 +262,15 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 		"name": plan.Name.ValueString(),
 	})
 
+	// Skip update if no user-configurable attributes changed
+	if plan.Name.Equal(state.Name) && plan.Domains.Equal(state.Domains) {
+		plan.ID = state.ID
+		plan.CreatedAt = state.CreatedAt
+		plan.UpdatedAt = state.UpdatedAt
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		return
+	}
+
 	// Build the update request
 	updateReq := &client.OrganizationUpdateRequest{
 		Name: plan.Name.ValueString(),
@@ -292,7 +305,7 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 	// Update the plan with response data
 	plan.ID = state.ID
 	plan.CreatedAt = state.CreatedAt
-	plan.UpdatedAt = types.StringValue(org.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	plan.UpdatedAt = types.StringValue(org.UpdatedAt.Format(time.RFC3339))
 
 	tflog.Info(ctx, "Updated organization", map[string]any{
 		"id":   org.ID,

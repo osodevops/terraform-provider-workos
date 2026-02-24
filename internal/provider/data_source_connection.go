@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -206,8 +207,8 @@ func (d *ConnectionDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	config.Name = types.StringValue(conn.Name)
 	config.State = types.StringValue(conn.State)
 	config.Status = types.StringValue(conn.Status)
-	config.CreatedAt = types.StringValue(conn.CreatedAt.Format("2006-01-02T15:04:05Z"))
-	config.UpdatedAt = types.StringValue(conn.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	config.CreatedAt = types.StringValue(conn.CreatedAt.Format(time.RFC3339))
+	config.UpdatedAt = types.StringValue(conn.UpdatedAt.Format(time.RFC3339))
 
 	tflog.Info(ctx, "Read connection", map[string]any{
 		"id":              conn.ID,

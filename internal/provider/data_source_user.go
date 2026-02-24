@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -194,8 +195,8 @@ func (d *UserDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	} else {
 		data.ProfilePictureURL = types.StringNull()
 	}
-	data.CreatedAt = types.StringValue(user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
-	data.UpdatedAt = types.StringValue(user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	data.CreatedAt = types.StringValue(user.CreatedAt.Format(time.RFC3339))
+	data.UpdatedAt = types.StringValue(user.UpdatedAt.Format(time.RFC3339))
 
 	tflog.Info(ctx, "Read user", map[string]any{
 		"id":    user.ID,

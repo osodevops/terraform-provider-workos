@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -118,6 +119,9 @@ terraform import workos_organization_membership.example om_01HXYZ...
 				Description:         "The status of the membership.",
 				MarkdownDescription: "The status of the membership (`active`, `inactive`, `pending`).",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"created_at": schema.StringAttribute{
 				Description:         "The timestamp when the membership was created.",
@@ -131,6 +135,9 @@ terraform import workos_organization_membership.example om_01HXYZ...
 				Description:         "The timestamp when the membership was last updated.",
 				MarkdownDescription: "The timestamp when the membership was last updated (RFC3339 format).",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -198,8 +205,8 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 		plan.RoleSlug = types.StringNull()
 	}
 	plan.Status = types.StringValue(membership.Status)
-	plan.CreatedAt = types.StringValue(membership.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
-	plan.UpdatedAt = types.StringValue(membership.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	plan.CreatedAt = types.StringValue(membership.CreatedAt.Format(time.RFC3339))
+	plan.UpdatedAt = types.StringValue(membership.UpdatedAt.Format(time.RFC3339))
 
 	tflog.Info(ctx, "Created organization membership", map[string]any{
 		"id":              membership.ID,
@@ -252,8 +259,8 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 		state.RoleSlug = types.StringNull()
 	}
 	state.Status = types.StringValue(membership.Status)
-	state.CreatedAt = types.StringValue(membership.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
-	state.UpdatedAt = types.StringValue(membership.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	state.CreatedAt = types.StringValue(membership.CreatedAt.Format(time.RFC3339))
+	state.UpdatedAt = types.StringValue(membership.UpdatedAt.Format(time.RFC3339))
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -295,7 +302,7 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 	}
 	plan.Status = types.StringValue(membership.Status)
 	plan.CreatedAt = state.CreatedAt
-	plan.UpdatedAt = types.StringValue(membership.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	plan.UpdatedAt = types.StringValue(membership.UpdatedAt.Format(time.RFC3339))
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }

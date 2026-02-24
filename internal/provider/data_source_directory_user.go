@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -229,8 +230,8 @@ func (d *DirectoryUserDataSource) Read(ctx context.Context, req datasource.ReadR
 	}
 	config.State = types.StringValue(user.State)
 	config.IdpID = types.StringValue(user.IdpID)
-	config.CreatedAt = types.StringValue(user.CreatedAt.Format("2006-01-02T15:04:05Z"))
-	config.UpdatedAt = types.StringValue(user.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	config.CreatedAt = types.StringValue(user.CreatedAt.Format(time.RFC3339))
+	config.UpdatedAt = types.StringValue(user.UpdatedAt.Format(time.RFC3339))
 
 	tflog.Info(ctx, "Read directory user", map[string]any{
 		"id":    user.ID,

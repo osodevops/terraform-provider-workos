@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -148,6 +149,9 @@ if password authentication is required.
 				Description:         "URL of the user's profile picture.",
 				MarkdownDescription: "URL of the user's profile picture.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"created_at": schema.StringAttribute{
 				Description:         "The timestamp when the user was created.",
@@ -161,6 +165,9 @@ if password authentication is required.
 				Description:         "The timestamp when the user was last updated.",
 				MarkdownDescription: "The timestamp when the user was last updated (RFC3339 format).",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -237,8 +244,8 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 	} else {
 		plan.ProfilePictureURL = types.StringNull()
 	}
-	plan.CreatedAt = types.StringValue(user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
-	plan.UpdatedAt = types.StringValue(user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	plan.CreatedAt = types.StringValue(user.CreatedAt.Format(time.RFC3339))
+	plan.UpdatedAt = types.StringValue(user.UpdatedAt.Format(time.RFC3339))
 
 	tflog.Info(ctx, "Created user", map[string]any{
 		"id":    user.ID,
@@ -295,8 +302,8 @@ func (r *UserResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	} else {
 		state.ProfilePictureURL = types.StringNull()
 	}
-	state.CreatedAt = types.StringValue(user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
-	state.UpdatedAt = types.StringValue(user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	state.CreatedAt = types.StringValue(user.CreatedAt.Format(time.RFC3339))
+	state.UpdatedAt = types.StringValue(user.UpdatedAt.Format(time.RFC3339))
 
 	// Note: Password and PasswordHash are not returned by the API, preserve state values
 
@@ -318,11 +325,25 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		"email": plan.Email.ValueString(),
 	})
 
-	emailVerified := plan.EmailVerified.ValueBool()
-	updateReq := &client.UserUpdateRequest{
-		EmailVerified: &emailVerified,
+	// Skip update if no user-configurable attributes changed
+	if plan.Email.Equal(state.Email) &&
+		plan.EmailVerified.Equal(state.EmailVerified) &&
+		plan.FirstName.Equal(state.FirstName) &&
+		plan.LastName.Equal(state.LastName) {
+		plan.ID = state.ID
+		plan.CreatedAt = state.CreatedAt
+		plan.UpdatedAt = state.UpdatedAt
+		plan.ProfilePictureURL = state.ProfilePictureURL
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		return
 	}
 
+	updateReq := &client.UserUpdateRequest{}
+
+	if !plan.EmailVerified.Equal(state.EmailVerified) {
+		emailVerified := plan.EmailVerified.ValueBool()
+		updateReq.EmailVerified = &emailVerified
+	}
 	if !plan.Email.Equal(state.Email) {
 		updateReq.Email = plan.Email.ValueString()
 	}
@@ -358,7 +379,7 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		plan.ProfilePictureURL = types.StringNull()
 	}
 	plan.CreatedAt = state.CreatedAt
-	plan.UpdatedAt = types.StringValue(user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	plan.UpdatedAt = types.StringValue(user.UpdatedAt.Format(time.RFC3339))
 
 	tflog.Info(ctx, "Updated user", map[string]any{
 		"id": user.ID,

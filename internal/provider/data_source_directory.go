@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -194,8 +195,8 @@ func (d *DirectoryDataSource) Read(ctx context.Context, req datasource.ReadReque
 	} else {
 		config.Endpoint = types.StringNull()
 	}
-	config.CreatedAt = types.StringValue(dir.CreatedAt.Format("2006-01-02T15:04:05Z"))
-	config.UpdatedAt = types.StringValue(dir.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	config.CreatedAt = types.StringValue(dir.CreatedAt.Format(time.RFC3339))
+	config.UpdatedAt = types.StringValue(dir.UpdatedAt.Format(time.RFC3339))
 
 	tflog.Info(ctx, "Read directory", map[string]any{
 		"id":   dir.ID,
