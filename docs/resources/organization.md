@@ -11,8 +11,6 @@ description: |-
   resource "workos_organization" "example" {
     name    = "Acme Corporation"
     domains = ["acme.com", "acmecorp.com"]
-  
-    allow_profiles_outside_organization = false
   }
   
   Import
@@ -34,8 +32,6 @@ companies and are used to group users, SSO connections, and directory sync confi
 resource "workos_organization" "example" {
   name    = "Acme Corporation"
   domains = ["acme.com", "acmecorp.com"]
-
-  allow_profiles_outside_organization = false
 }
 ```
 
@@ -54,8 +50,6 @@ terraform import workos_organization.example org_01HXYZ...
 resource "workos_organization" "example" {
   name    = "Acme Corporation"
   domains = ["acme.com", "acmecorp.com"]
-
-  allow_profiles_outside_organization = false
 }
 
 # Output the organization ID for use in other resources
@@ -77,7 +71,6 @@ output "organization_created_at" {
 
 ### Optional
 
-- `allow_profiles_outside_organization` (Boolean) Whether to allow user profiles that don't belong to this organization. Defaults to `false`.
 - `domains` (Set of String) The domains associated with the organization. These are used for domain-based SSO routing.
 
 ### Read-Only

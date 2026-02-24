@@ -188,8 +188,12 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	plan.ID = types.StringValue(membership.ID)
 	plan.UserID = types.StringValue(membership.UserID)
 	plan.OrganizationID = types.StringValue(membership.OrganizationID)
+	// The API may not return role_slug in the response, so preserve the plan value
+	// if it was set, since we know it was applied during creation.
 	if membership.RoleSlug != "" {
 		plan.RoleSlug = types.StringValue(membership.RoleSlug)
+	} else if !plan.RoleSlug.IsNull() && plan.RoleSlug.ValueString() != "" {
+		// Preserve plan value - API accepted it but didn't return it
 	} else {
 		plan.RoleSlug = types.StringNull()
 	}
@@ -238,8 +242,12 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 	// Map response to state
 	state.UserID = types.StringValue(membership.UserID)
 	state.OrganizationID = types.StringValue(membership.OrganizationID)
+	// The API may not return role_slug in the response, so preserve the
+	// existing state value if the API returns empty.
 	if membership.RoleSlug != "" {
 		state.RoleSlug = types.StringValue(membership.RoleSlug)
+	} else if !state.RoleSlug.IsNull() && state.RoleSlug.ValueString() != "" {
+		// Preserve existing state value - API didn't return it but it was set
 	} else {
 		state.RoleSlug = types.StringNull()
 	}

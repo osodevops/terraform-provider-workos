@@ -31,13 +31,12 @@ type OrganizationDataSource struct {
 
 // OrganizationDataSourceModel describes the data source data model.
 type OrganizationDataSourceModel struct {
-	ID                               types.String `tfsdk:"id"`
-	Domain                           types.String `tfsdk:"domain"`
-	Name                             types.String `tfsdk:"name"`
-	Domains                          types.Set    `tfsdk:"domains"`
-	AllowProfilesOutsideOrganization types.Bool   `tfsdk:"allow_profiles_outside_organization"`
-	CreatedAt                        types.String `tfsdk:"created_at"`
-	UpdatedAt                        types.String `tfsdk:"updated_at"`
+	ID        types.String `tfsdk:"id"`
+	Domain    types.String `tfsdk:"domain"`
+	Name      types.String `tfsdk:"name"`
+	Domains   types.Set    `tfsdk:"domains"`
+	CreatedAt types.String `tfsdk:"created_at"`
+	UpdatedAt types.String `tfsdk:"updated_at"`
 }
 
 func (d *OrganizationDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -92,11 +91,6 @@ data "workos_organization" "example" {
 				MarkdownDescription: "The domains associated with the organization.",
 				Computed:            true,
 				ElementType:         types.StringType,
-			},
-			"allow_profiles_outside_organization": schema.BoolAttribute{
-				Description:         "Whether user profiles outside the organization are allowed.",
-				MarkdownDescription: "Whether user profiles that don't belong to this organization are allowed.",
-				Computed:            true,
 			},
 			"created_at": schema.StringAttribute{
 				Description:         "The timestamp when the organization was created.",
@@ -186,7 +180,6 @@ func (d *OrganizationDataSource) Read(ctx context.Context, req datasource.ReadRe
 	// Map response to state
 	config.ID = types.StringValue(org.ID)
 	config.Name = types.StringValue(org.Name)
-	config.AllowProfilesOutsideOrganization = types.BoolValue(org.AllowProfilesOutsideOrganization)
 	config.CreatedAt = types.StringValue(org.CreatedAt.Format("2006-01-02T15:04:05Z"))
 	config.UpdatedAt = types.StringValue(org.UpdatedAt.Format("2006-01-02T15:04:05Z"))
 

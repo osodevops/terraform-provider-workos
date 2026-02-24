@@ -75,7 +75,6 @@ output "org_name_by_domain" {
 
 ### Read-Only
 
-- `allow_profiles_outside_organization` (Boolean) Whether user profiles that don't belong to this organization are allowed.
 - `created_at` (String) The timestamp when the organization was created (RFC3339 format).
 - `domains` (Set of String) The domains associated with the organization.
 - `name` (String) The name of the organization.

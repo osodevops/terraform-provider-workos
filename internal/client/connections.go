@@ -9,32 +9,10 @@ import (
 	"net/url"
 )
 
-// ConnectionCreateRequest represents the request to create a connection
-type ConnectionCreateRequest struct {
-	OrganizationID string `json:"organization_id"`
-	ConnectionType string `json:"connection_type"`
-	Name           string `json:"name,omitempty"`
-}
-
-// ConnectionUpdateRequest represents the request to update a connection
-type ConnectionUpdateRequest struct {
-	Name string `json:"name,omitempty"`
-}
-
 // ConnectionListResponse represents the response from listing connections
 type ConnectionListResponse struct {
 	Data         []Connection `json:"data"`
 	ListMetadata ListMetadata `json:"list_metadata"`
-}
-
-// CreateConnection creates a new SSO connection
-func (c *Client) CreateConnection(ctx context.Context, req *ConnectionCreateRequest) (*Connection, error) {
-	var conn Connection
-	err := c.Post(ctx, "/connections", req, &conn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create connection: %w", err)
-	}
-	return &conn, nil
 }
 
 // GetConnection retrieves a connection by ID
@@ -43,16 +21,6 @@ func (c *Client) GetConnection(ctx context.Context, id string) (*Connection, err
 	err := c.Get(ctx, "/connections/"+id, &conn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connection: %w", err)
-	}
-	return &conn, nil
-}
-
-// UpdateConnection updates an existing connection
-func (c *Client) UpdateConnection(ctx context.Context, id string, req *ConnectionUpdateRequest) (*Connection, error) {
-	var conn Connection
-	err := c.Put(ctx, "/connections/"+id, req, &conn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update connection: %w", err)
 	}
 	return &conn, nil
 }

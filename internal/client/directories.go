@@ -9,18 +9,6 @@ import (
 	"net/url"
 )
 
-// DirectoryCreateRequest represents the request to create a directory
-type DirectoryCreateRequest struct {
-	OrganizationID string `json:"organization_id"`
-	Name           string `json:"name"`
-	Type           string `json:"type"`
-}
-
-// DirectoryUpdateRequest represents the request to update a directory
-type DirectoryUpdateRequest struct {
-	Name string `json:"name,omitempty"`
-}
-
 // DirectoryListResponse represents the response from listing directories
 type DirectoryListResponse struct {
 	Data         []Directory  `json:"data"`
@@ -39,32 +27,12 @@ type DirectoryGroupListResponse struct {
 	ListMetadata ListMetadata     `json:"list_metadata"`
 }
 
-// CreateDirectory creates a new directory
-func (c *Client) CreateDirectory(ctx context.Context, req *DirectoryCreateRequest) (*Directory, error) {
-	var dir Directory
-	err := c.Post(ctx, "/directories", req, &dir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create directory: %w", err)
-	}
-	return &dir, nil
-}
-
 // GetDirectory retrieves a directory by ID
 func (c *Client) GetDirectory(ctx context.Context, id string) (*Directory, error) {
 	var dir Directory
 	err := c.Get(ctx, "/directories/"+id, &dir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get directory: %w", err)
-	}
-	return &dir, nil
-}
-
-// UpdateDirectory updates an existing directory
-func (c *Client) UpdateDirectory(ctx context.Context, id string, req *DirectoryUpdateRequest) (*Directory, error) {
-	var dir Directory
-	err := c.Put(ctx, "/directories/"+id, req, &dir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update directory: %w", err)
 	}
 	return &dir, nil
 }
