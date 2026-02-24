@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -180,8 +181,8 @@ func (d *OrganizationDataSource) Read(ctx context.Context, req datasource.ReadRe
 	// Map response to state
 	config.ID = types.StringValue(org.ID)
 	config.Name = types.StringValue(org.Name)
-	config.CreatedAt = types.StringValue(org.CreatedAt.Format("2006-01-02T15:04:05Z"))
-	config.UpdatedAt = types.StringValue(org.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	config.CreatedAt = types.StringValue(org.CreatedAt.Format(time.RFC3339))
+	config.UpdatedAt = types.StringValue(org.UpdatedAt.Format(time.RFC3339))
 
 	// Map domains
 	if len(org.Domains) > 0 {

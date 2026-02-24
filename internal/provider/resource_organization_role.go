@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -142,6 +143,9 @@ terraform import workos_organization_role.example org_01HXYZ.../org-billing-admi
 				Description:         "The timestamp when the role was last updated.",
 				MarkdownDescription: "The timestamp when the role was last updated (RFC3339 format).",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -206,8 +210,8 @@ func (r *OrganizationRoleResource) Create(ctx context.Context, req resource.Crea
 	plan.ID = types.StringValue(role.ID)
 	plan.Type = types.StringValue(role.Type)
 	plan.Description = types.StringValue(role.Description)
-	plan.CreatedAt = types.StringValue(role.CreatedAt.Format("2006-01-02T15:04:05Z"))
-	plan.UpdatedAt = types.StringValue(role.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	plan.CreatedAt = types.StringValue(role.CreatedAt.Format(time.RFC3339))
+	plan.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 
 	// Map permissions - always set as empty list rather than null
 	if len(role.Permissions) > 0 {
@@ -271,8 +275,8 @@ func (r *OrganizationRoleResource) Read(ctx context.Context, req resource.ReadRe
 	state.Name = types.StringValue(role.Name)
 	state.Description = types.StringValue(role.Description)
 	state.Type = types.StringValue(role.Type)
-	state.CreatedAt = types.StringValue(role.CreatedAt.Format("2006-01-02T15:04:05Z"))
-	state.UpdatedAt = types.StringValue(role.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	state.CreatedAt = types.StringValue(role.CreatedAt.Format(time.RFC3339))
+	state.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 
 	// Map permissions - always set as empty list rather than null
 	if len(role.Permissions) > 0 {
@@ -308,6 +312,17 @@ func (r *OrganizationRoleResource) Update(ctx context.Context, req resource.Upda
 		"name":            plan.Name.ValueString(),
 	})
 
+	// Skip update if no user-configurable attributes changed
+	if plan.Name.Equal(state.Name) && plan.Description.Equal(state.Description) {
+		plan.ID = state.ID
+		plan.CreatedAt = state.CreatedAt
+		plan.UpdatedAt = state.UpdatedAt
+		plan.Type = state.Type
+		plan.Permissions = state.Permissions
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		return
+	}
+
 	// Build the update request
 	updateReq := &client.OrganizationRoleUpdateRequest{
 		Name:        plan.Name.ValueString(),
@@ -329,7 +344,7 @@ func (r *OrganizationRoleResource) Update(ctx context.Context, req resource.Upda
 	plan.CreatedAt = state.CreatedAt
 	plan.Type = state.Type
 	plan.Description = types.StringValue(role.Description)
-	plan.UpdatedAt = types.StringValue(role.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	plan.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 
 	// Map permissions - always set as empty list rather than null
 	if len(role.Permissions) > 0 {

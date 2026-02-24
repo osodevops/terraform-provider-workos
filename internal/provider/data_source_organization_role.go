@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -207,8 +208,8 @@ func (d *OrganizationRoleDataSource) Read(ctx context.Context, req datasource.Re
 	config.Name = types.StringValue(role.Name)
 	config.Description = types.StringValue(role.Description)
 	config.Type = types.StringValue(role.Type)
-	config.CreatedAt = types.StringValue(role.CreatedAt.Format("2006-01-02T15:04:05Z"))
-	config.UpdatedAt = types.StringValue(role.UpdatedAt.Format("2006-01-02T15:04:05Z"))
+	config.CreatedAt = types.StringValue(role.CreatedAt.Format(time.RFC3339))
+	config.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 
 	// Map permissions - always set as empty list rather than null
 	if len(role.Permissions) > 0 {
