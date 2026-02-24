@@ -7,15 +7,15 @@ description: |-
   Organizations are the fundamental multi-tenant unit in WorkOS. They represent your customers'
   companies and are used to group users, SSO connections, and directory sync configurations.
   Example Usage
-
+  
   resource "workos_organization" "example" {
     name    = "Acme Corporation"
     domains = ["acme.com", "acmecorp.com"]
   }
-
+  
   Import
   Organizations can be imported using the organization ID:
-
+  
   terraform import workos_organization.example org_01HXYZ...
 ---
 
