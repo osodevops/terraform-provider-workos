@@ -198,6 +198,15 @@ func (c *Client) Put(ctx context.Context, path string, body interface{}, result 
 	return c.parseResponse(resp, result)
 }
 
+// Patch performs a PATCH request
+func (c *Client) Patch(ctx context.Context, path string, body interface{}, result interface{}) error {
+	resp, err := c.doRequest(ctx, http.MethodPatch, path, body)
+	if err != nil {
+		return err
+	}
+	return c.parseResponse(resp, result)
+}
+
 // Delete performs a DELETE request
 func (c *Client) Delete(ctx context.Context, path string) error {
 	resp, err := c.doRequest(ctx, http.MethodDelete, path, nil)

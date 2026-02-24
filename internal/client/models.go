@@ -210,3 +210,35 @@ type OrganizationMembershipCreateRequest struct {
 	OrganizationID string `json:"organization_id"`
 	RoleSlug       string `json:"role_slug,omitempty"`
 }
+
+// OrganizationRole represents a WorkOS Organization Role
+type OrganizationRole struct {
+	ID          string    `json:"id"`
+	Object      string    `json:"object"`
+	Slug        string    `json:"slug"`
+	Name        string    `json:"name"`
+	Description string    `json:"description,omitempty"`
+	Type        string    `json:"type"`
+	Permissions []string  `json:"permissions"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// OrganizationRoleCreateRequest represents the request to create an organization role
+type OrganizationRoleCreateRequest struct {
+	Slug        string `json:"slug"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// OrganizationRoleUpdateRequest represents the request to update an organization role
+type OrganizationRoleUpdateRequest struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// OrganizationRoleListResponse represents the response from listing organization roles
+type OrganizationRoleListResponse struct {
+	Data         []OrganizationRole `json:"data"`
+	ListMetadata ListMetadata       `json:"list_metadata"`
+}
