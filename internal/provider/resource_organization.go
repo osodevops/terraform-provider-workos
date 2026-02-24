@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -33,12 +32,11 @@ type OrganizationResource struct {
 
 // OrganizationResourceModel describes the resource data model.
 type OrganizationResourceModel struct {
-	ID                               types.String `tfsdk:"id"`
-	Name                             types.String `tfsdk:"name"`
-	Domains                          types.Set    `tfsdk:"domains"`
-	AllowProfilesOutsideOrganization types.Bool   `tfsdk:"allow_profiles_outside_organization"`
-	CreatedAt                        types.String `tfsdk:"created_at"`
-	UpdatedAt                        types.String `tfsdk:"updated_at"`
+	ID        types.String `tfsdk:"id"`
+	Name      types.String `tfsdk:"name"`
+	Domains   types.Set    `tfsdk:"domains"`
+	CreatedAt types.String `tfsdk:"created_at"`
+	UpdatedAt types.String `tfsdk:"updated_at"`
 }
 
 func (r *OrganizationResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -60,8 +58,6 @@ companies and are used to group users, SSO connections, and directory sync confi
 resource "workos_organization" "example" {
   name    = "Acme Corporation"
   domains = ["acme.com", "acmecorp.com"]
-
-  allow_profiles_outside_organization = false
 }
 ` + "```" + `
 
@@ -92,13 +88,6 @@ terraform import workos_organization.example org_01HXYZ...
 				MarkdownDescription: "The domains associated with the organization. These are used for domain-based SSO routing.",
 				Optional:            true,
 				ElementType:         types.StringType,
-			},
-			"allow_profiles_outside_organization": schema.BoolAttribute{
-				Description:         "Whether to allow user profiles outside the organization.",
-				MarkdownDescription: "Whether to allow user profiles that don't belong to this organization. Defaults to `false`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
 			},
 			"created_at": schema.StringAttribute{
 				Description:         "The timestamp when the organization was created.",
@@ -152,8 +141,7 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Build the create request
 	createReq := &client.OrganizationCreateRequest{
-		Name:                             plan.Name.ValueString(),
-		AllowProfilesOutsideOrganization: plan.AllowProfilesOutsideOrganization.ValueBool(),
+		Name: plan.Name.ValueString(),
 	}
 
 	// Add domains if specified
@@ -230,7 +218,6 @@ func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadReques
 
 	// Map response to state
 	state.Name = types.StringValue(org.Name)
-	state.AllowProfilesOutsideOrganization = types.BoolValue(org.AllowProfilesOutsideOrganization)
 	state.CreatedAt = types.StringValue(org.CreatedAt.Format("2006-01-02T15:04:05Z"))
 	state.UpdatedAt = types.StringValue(org.UpdatedAt.Format("2006-01-02T15:04:05Z"))
 
@@ -272,10 +259,8 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 	})
 
 	// Build the update request
-	allowProfiles := plan.AllowProfilesOutsideOrganization.ValueBool()
 	updateReq := &client.OrganizationUpdateRequest{
-		Name:                             plan.Name.ValueString(),
-		AllowProfilesOutsideOrganization: &allowProfiles,
+		Name: plan.Name.ValueString(),
 	}
 
 	// Add domains if specified

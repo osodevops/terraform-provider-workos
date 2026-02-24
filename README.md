@@ -1,6 +1,6 @@
 # WorkOS Terraform Provider
 
-Terraform provider for managing [WorkOS](https://workos.com) resources including organizations, SSO connections, directory sync, webhooks, and user management.
+Terraform provider for managing [WorkOS](https://workos.com) resources including organizations, users, organization memberships, and roles.
 
 ## Requirements
 
@@ -58,51 +58,6 @@ provider "workos" {
 resource "workos_organization" "example" {
   name    = "Acme Corporation"
   domains = ["acme.com", "acmecorp.com"]
-
-  allow_profiles_outside_organization = false
-}
-```
-
-### Managing SSO Connections
-
-```hcl
-resource "workos_connection" "okta" {
-  organization_id = workos_organization.example.id
-  name            = "Okta SSO"
-  connection_type = "OktaSAML"
-}
-
-resource "workos_connection" "google" {
-  organization_id = workos_organization.example.id
-  name            = "Google OAuth"
-  connection_type = "GoogleOAuth"
-}
-```
-
-### Managing Directory Sync
-
-```hcl
-resource "workos_directory" "okta" {
-  organization_id = workos_organization.example.id
-  name            = "Okta Directory"
-  type            = "okta scimv2.0"
-}
-```
-
-### Managing Webhooks
-
-```hcl
-resource "workos_webhook" "main" {
-  url     = "https://api.example.com/webhooks/workos"
-  secret  = var.webhook_secret
-  enabled = true
-
-  events = [
-    "user.created",
-    "user.updated",
-    "dsync.user.created",
-    "connection.activated",
-  ]
 }
 ```
 
@@ -158,12 +113,6 @@ data "workos_user" "john" {
   email = "john@example.com"
 }
 
-# Look up directory user
-data "workos_directory_user" "synced" {
-  directory_id = workos_directory.okta.id
-  email        = "employee@acme.com"
-}
-
 # Look up organization role by slug
 data "workos_organization_role" "billing" {
   organization_id = workos_organization.example.id
@@ -176,9 +125,6 @@ data "workos_organization_role" "billing" {
 | Resource | Description |
 |----------|-------------|
 | `workos_organization` | Manages WorkOS organizations |
-| `workos_connection` | Manages SSO connections (SAML, OAuth, OIDC) |
-| `workos_directory` | Manages Directory Sync directories |
-| `workos_webhook` | Manages webhook endpoints |
 | `workos_user` | Manages AuthKit users |
 | `workos_organization_membership` | Manages user-organization memberships |
 | `workos_organization_role` | Manages organization authorization roles |
@@ -188,8 +134,8 @@ data "workos_organization_role" "billing" {
 | Data Source | Description |
 |-------------|-------------|
 | `workos_organization` | Retrieves organization by ID or domain |
-| `workos_connection` | Retrieves SSO connection by ID or org/type |
-| `workos_directory` | Retrieves directory by ID or organization |
+| `workos_connection` | Retrieves SSO connection by ID or org/type (read-only) |
+| `workos_directory` | Retrieves directory by ID or organization (read-only) |
 | `workos_directory_user` | Retrieves directory-synced user |
 | `workos_directory_group` | Retrieves directory-synced group |
 | `workos_user` | Retrieves AuthKit user by ID or email |

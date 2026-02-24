@@ -52,54 +52,40 @@ This document tracks the implementation progress of the WorkOS Terraform Provide
 
 ---
 
-## Phase 2: SSO Connection Resource
+## Phase 2: SSO Connection Data Source (read-only)
 
 **Status:** ✅ Complete
 
-### All Items Complete ✅
+**Note:** The connection _resource_ was removed because the WorkOS API does not support creating or updating connections. Connections are configured via the Dashboard/Admin Portal. Only the read-only data source is provided.
 
 | Item | File | Notes |
 |------|------|-------|
-| Connection resource | `resource_connection.go` | SAML, OAuth, OIDC types |
 | Connection data source | `data_source_connection.go` | Lookup by ID or org/type |
-| Connection API client | `connections.go` | CRUD operations |
-| Acceptance tests | `resource_connection_test.go` | 3 tests |
-| Data source tests | `data_source_connection_test.go` | 2 tests |
-| Example | `examples/resources/workos_connection/` | Complete |
+| Connection API client | `connections.go` | Read-only operations |
 
 ---
 
-## Phase 3: Directory Sync Resource
+## Phase 3: Directory Sync Data Sources (read-only)
 
 **Status:** ✅ Complete
 
-### All Items Complete ✅
+**Note:** The directory _resource_ was removed because the WorkOS API does not support creating or updating directories. Directories are provisioned via the Dashboard/SCIM provider. Only the read-only data sources are provided.
 
 | Item | File | Notes |
 |------|------|-------|
-| Directory resource | `resource_directory.go` | SCIM configuration |
 | Directory data source | `data_source_directory.go` | Lookup by ID or org |
 | Directory user data source | `data_source_directory_user.go` | Lookup users |
 | Directory group data source | `data_source_directory_group.go` | Lookup groups |
-| Directory API client | `directories.go` | CRUD + user/group lookups |
-| Acceptance tests | `resource_directory_test.go` | 3 tests |
-| Data source tests | `data_source_directory_test.go` | 2 tests |
+| Directory API client | `directories.go` | Read-only + user/group lookups |
 | Examples | `examples/data-sources/workos_directory*/` | Complete |
 
 ---
 
 ## Phase 4: Webhook Resource
 
-**Status:** ✅ Complete
+**Status:** ❌ Removed
 
-### All Items Complete ✅
-
-| Item | File | Notes |
-|------|------|-------|
-| Webhook resource | `resource_webhook.go` | URL, secret, enabled, events |
-| Webhook API client | `webhooks.go` | CRUD + 35 event types |
-| Acceptance tests | `resource_webhook_test.go` | 2 tests |
-| Example | `examples/resources/workos_webhook/` | Complete |
+**Note:** The webhook resource was removed because the WorkOS API does not have a public webhook management API. All webhook CRUD operations return 404. Webhooks must be managed via the WorkOS Dashboard.
 
 ---
 
@@ -278,41 +264,37 @@ terraform-provider-workos/
 
 | Test File | Tests | Status |
 |-----------|-------|--------|
-| `resource_organization_test.go` | 3 | ✅ |
+| `resource_organization_test.go` | 2 | ✅ |
 | `data_source_organization_test.go` | 2 | ✅ |
-| `resource_connection_test.go` | 3 | ✅ |
-| `data_source_connection_test.go` | 2 | ✅ |
-| `resource_directory_test.go` | 3 | ✅ |
-| `data_source_directory_test.go` | 2 | ✅ |
-| `resource_webhook_test.go` | 2 | ✅ |
 | `resource_user_test.go` | 3 | ✅ |
 | `data_source_user_test.go` | 2 | ✅ |
 | `resource_organization_membership_test.go` | 2 | ✅ |
-| **Total** | **24** | ✅ All passing |
+| `resource_organization_role_test.go` | 2 | ✅ |
+| `data_source_organization_role_test.go` | 1 | ✅ |
+| **Total** | **14** | ✅ All passing |
 
 ---
 
 ## Resources Summary
 
-### Resources (6)
+### Resources (4)
 | Resource | Description |
 |----------|-------------|
 | `workos_organization` | Organization management |
-| `workos_connection` | SSO connection management |
-| `workos_directory` | Directory sync configuration |
-| `workos_webhook` | Webhook endpoint management |
 | `workos_user` | AuthKit user management |
 | `workos_organization_membership` | User-organization associations |
+| `workos_organization_role` | Organization role management |
 
-### Data Sources (6)
+### Data Sources (7)
 | Data Source | Description |
 |-------------|-------------|
 | `workos_organization` | Lookup organizations |
-| `workos_connection` | Lookup SSO connections |
-| `workos_directory` | Lookup directories |
+| `workos_connection` | Lookup SSO connections (read-only) |
+| `workos_directory` | Lookup directories (read-only) |
 | `workos_directory_user` | Lookup directory users |
 | `workos_directory_group` | Lookup directory groups |
 | `workos_user` | Lookup AuthKit users |
+| `workos_organization_role` | Lookup organization roles |
 
 ---
 

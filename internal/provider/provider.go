@@ -43,7 +43,7 @@ func (p *WorkOSProvider) Metadata(ctx context.Context, req provider.MetadataRequ
 func (p *WorkOSProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The WorkOS provider allows you to manage WorkOS resources including organizations, " +
-			"SSO connections, directory sync, webhooks, and user management through Terraform.",
+			"users, organization memberships, and roles through Terraform.",
 		MarkdownDescription: `
 The WorkOS provider allows you to manage WorkOS resources through Terraform.
 
@@ -173,9 +173,6 @@ func (p *WorkOSProvider) Configure(ctx context.Context, req provider.ConfigureRe
 func (p *WorkOSProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewOrganizationResource,
-		NewConnectionResource,
-		NewDirectoryResource,
-		NewWebhookResource,
 		NewUserResource,
 		NewOrganizationMembershipResource,
 		NewOrganizationRoleResource,

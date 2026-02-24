@@ -2,8 +2,6 @@
 resource "workos_organization" "example" {
   name    = "Acme Corporation"
   domains = ["acme.com", "acmecorp.com"]
-
-  allow_profiles_outside_organization = false
 }
 
 # Output the organization ID for use in other resources

@@ -318,7 +318,10 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		"email": plan.Email.ValueString(),
 	})
 
-	updateReq := &client.UserUpdateRequest{}
+	emailVerified := plan.EmailVerified.ValueBool()
+	updateReq := &client.UserUpdateRequest{
+		EmailVerified: &emailVerified,
+	}
 
 	if !plan.Email.Equal(state.Email) {
 		updateReq.Email = plan.Email.ValueString()
@@ -328,10 +331,6 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	}
 	if !plan.LastName.Equal(state.LastName) {
 		updateReq.LastName = plan.LastName.ValueString()
-	}
-	if !plan.EmailVerified.Equal(state.EmailVerified) {
-		emailVerified := plan.EmailVerified.ValueBool()
-		updateReq.EmailVerified = &emailVerified
 	}
 
 	user, err := r.client.UpdateUser(ctx, state.ID.ValueString(), updateReq)

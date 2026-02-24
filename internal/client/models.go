@@ -7,13 +7,12 @@ import "time"
 
 // Organization represents a WorkOS Organization
 type Organization struct {
-	ID                               string    `json:"id"`
-	Object                           string    `json:"object"`
-	Name                             string    `json:"name"`
-	AllowProfilesOutsideOrganization bool      `json:"allow_profiles_outside_organization"`
-	Domains                          []Domain  `json:"domains,omitempty"`
-	CreatedAt                        time.Time `json:"created_at"`
-	UpdatedAt                        time.Time `json:"updated_at"`
+	ID        string    `json:"id"`
+	Object    string    `json:"object"`
+	Name      string    `json:"name"`
+	Domains   []Domain  `json:"domains,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Domain represents a domain associated with an organization
@@ -28,9 +27,8 @@ type Domain struct {
 
 // OrganizationCreateRequest represents the request to create an organization
 type OrganizationCreateRequest struct {
-	Name                             string   `json:"name"`
-	AllowProfilesOutsideOrganization bool     `json:"allow_profiles_outside_organization,omitempty"`
-	DomainData                       []DomainData `json:"domain_data,omitempty"`
+	Name       string       `json:"name"`
+	DomainData []DomainData `json:"domain_data,omitempty"`
 }
 
 // DomainData represents domain data for organization creation/update
@@ -41,9 +39,8 @@ type DomainData struct {
 
 // OrganizationUpdateRequest represents the request to update an organization
 type OrganizationUpdateRequest struct {
-	Name                             string       `json:"name,omitempty"`
-	AllowProfilesOutsideOrganization *bool        `json:"allow_profiles_outside_organization,omitempty"`
-	DomainData                       []DomainData `json:"domain_data,omitempty"`
+	Name       string       `json:"name,omitempty"`
+	DomainData []DomainData `json:"domain_data,omitempty"`
 }
 
 // OrganizationListResponse represents the response from listing organizations
@@ -132,33 +129,6 @@ type DirectoryGroup struct {
 	Name           string    `json:"name"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
-}
-
-// Webhook represents a WorkOS Webhook
-type Webhook struct {
-	ID        string   `json:"id"`
-	Object    string   `json:"object"`
-	URL       string   `json:"url"`
-	Secret    string   `json:"secret,omitempty"`
-	Enabled   bool     `json:"enabled"`
-	Events    []string `json:"events"`
-	CreatedAt string   `json:"created_at"`
-	UpdatedAt string   `json:"updated_at"`
-}
-
-// WebhookCreateRequest represents the request to create a webhook
-type WebhookCreateRequest struct {
-	URL     string   `json:"url"`
-	Secret  string   `json:"secret"`
-	Enabled bool     `json:"enabled"`
-	Events  []string `json:"events"`
-}
-
-// WebhookUpdateRequest represents the request to update a webhook
-type WebhookUpdateRequest struct {
-	URL     string   `json:"url,omitempty"`
-	Enabled *bool    `json:"enabled,omitempty"`
-	Events  []string `json:"events,omitempty"`
 }
 
 // User represents a WorkOS AuthKit User
