@@ -56,8 +56,14 @@ provider "workos" {
 
 ```hcl
 resource "workos_organization" "example" {
-  name    = "Acme Corporation"
-  domains = ["acme.com", "acmecorp.com"]
+  name        = "Acme Corporation"
+  external_id = "acme-corp-123"
+  domains     = ["acme.com", "acmecorp.com"]
+
+  metadata = {
+    tier   = "enterprise"
+    region = "us-east-1"
+  }
 }
 ```
 
@@ -108,6 +114,11 @@ data "workos_organization" "by_domain" {
   domain = "acme.com"
 }
 
+# Look up organization by external ID
+data "workos_organization" "by_external_id" {
+  external_id = "acme-corp-123"
+}
+
 # Look up user by email
 data "workos_user" "john" {
   email = "john@example.com"
@@ -133,7 +144,7 @@ data "workos_organization_role" "billing" {
 
 | Data Source | Description |
 |-------------|-------------|
-| `workos_organization` | Retrieves organization by ID or domain |
+| `workos_organization` | Retrieves organization by ID, domain, or external ID |
 | `workos_connection` | Retrieves SSO connection by ID or org/type (read-only) |
 | `workos_directory` | Retrieves directory by ID or organization (read-only) |
 | `workos_directory_user` | Retrieves directory-synced user |
