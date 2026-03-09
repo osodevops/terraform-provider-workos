@@ -58,6 +58,29 @@ func TestAccOrganizationDataSource_ByDomain(t *testing.T) {
 	})
 }
 
+func TestAccOrganizationDataSource_ByExternalID(t *testing.T) {
+	name := fmt.Sprintf("tf-acc-test-%d", time.Now().UnixNano())
+	externalID := fmt.Sprintf("ext-%d", time.Now().UnixNano())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccOrganizationDataSourceConfigByExternalID(name, externalID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair(
+						"data.workos_organization.test", "id",
+						"workos_organization.test", "id",
+					),
+					resource.TestCheckResourceAttr("data.workos_organization.test", "name", name),
+					resource.TestCheckResourceAttr("data.workos_organization.test", "external_id", externalID),
+				),
+			},
+		},
+	})
+}
+
 func testAccOrganizationDataSourceConfigByID(name string) string {
 	return fmt.Sprintf(`
 resource "workos_organization" "test" {
@@ -83,4 +106,19 @@ data "workos_organization" "test" {
   depends_on = [workos_organization.test]
 }
 `, name, domain)
+}
+
+func testAccOrganizationDataSourceConfigByExternalID(name, externalID string) string {
+	return fmt.Sprintf(`
+resource "workos_organization" "test" {
+  name        = %[1]q
+  external_id = %[2]q
+}
+
+data "workos_organization" "test" {
+  external_id = %[2]q
+
+  depends_on = [workos_organization.test]
+}
+`, name, externalID)
 }

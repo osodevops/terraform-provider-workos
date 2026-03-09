@@ -4,7 +4,7 @@ page_title: "workos_organization Data Source - workos"
 subcategory: ""
 description: |-
   Use this data source to get information about a WorkOS Organization.
-  You can look up an organization by its ID or by one of its domains.
+  You can look up an organization by its ID, domain, or external ID.
   Example Usage
   By ID
   
@@ -17,13 +17,19 @@ description: |-
   data "workos_organization" "example" {
     domain = "acme.com"
   }
+  
+  By External ID
+  
+  data "workos_organization" "example" {
+    external_id = "my-external-id"
+  }
 ---
 
 # workos_organization (Data Source)
 
 Use this data source to get information about a WorkOS Organization.
 
-You can look up an organization by its ID or by one of its domains.
+You can look up an organization by its ID, domain, or external ID.
 
 ## Example Usage
 
@@ -40,6 +46,14 @@ data "workos_organization" "example" {
 ```hcl
 data "workos_organization" "example" {
   domain = "acme.com"
+}
+```
+
+### By External ID
+
+```hcl
+data "workos_organization" "example" {
+  external_id = "my-external-id"
 }
 ```
 
@@ -71,11 +85,13 @@ output "org_name_by_domain" {
 ### Optional
 
 - `domain` (String) A domain associated with the organization to look up. The organization that owns this domain will be returned.
+- `external_id` (String) The external ID of the organization to look up.
 - `id` (String) The unique identifier of the organization to look up (e.g., `org_01HXYZ...`).
 
 ### Read-Only
 
 - `created_at` (String) The timestamp when the organization was created (RFC3339 format).
 - `domains` (Set of String) The domains associated with the organization.
+- `metadata` (Map of String) The metadata of the organization as key-value string pairs.
 - `name` (String) The name of the organization.
 - `updated_at` (String) The timestamp when the organization was last updated (RFC3339 format).
