@@ -32,12 +32,14 @@ type OrganizationDataSource struct {
 
 // OrganizationDataSourceModel describes the data source data model.
 type OrganizationDataSourceModel struct {
-	ID        types.String `tfsdk:"id"`
-	Domain    types.String `tfsdk:"domain"`
-	Name      types.String `tfsdk:"name"`
-	Domains   types.Set    `tfsdk:"domains"`
-	CreatedAt types.String `tfsdk:"created_at"`
-	UpdatedAt types.String `tfsdk:"updated_at"`
+	ID         types.String `tfsdk:"id"`
+	Domain     types.String `tfsdk:"domain"`
+	ExternalID types.String `tfsdk:"external_id"`
+	Name       types.String `tfsdk:"name"`
+	Domains    types.Set    `tfsdk:"domains"`
+	Metadata   types.Map    `tfsdk:"metadata"`
+	CreatedAt  types.String `tfsdk:"created_at"`
+	UpdatedAt  types.String `tfsdk:"updated_at"`
 }
 
 func (d *OrganizationDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -50,7 +52,7 @@ func (d *OrganizationDataSource) Schema(ctx context.Context, req datasource.Sche
 		MarkdownDescription: `
 Use this data source to get information about a WorkOS Organization.
 
-You can look up an organization by its ID or by one of its domains.
+You can look up an organization by its ID, domain, or external ID.
 
 ## Example Usage
 
@@ -69,6 +71,14 @@ data "workos_organization" "example" {
   domain = "acme.com"
 }
 ` + "```" + `
+
+### By External ID
+
+` + "```hcl" + `
+data "workos_organization" "example" {
+  external_id = "my-external-id"
+}
+` + "```" + `
 `,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -82,10 +92,22 @@ data "workos_organization" "example" {
 				MarkdownDescription: "A domain associated with the organization to look up. The organization that owns this domain will be returned.",
 				Optional:            true,
 			},
+			"external_id": schema.StringAttribute{
+				Description:         "The external ID of the organization to look up.",
+				MarkdownDescription: "The external ID of the organization to look up.",
+				Optional:            true,
+				Computed:            true,
+			},
 			"name": schema.StringAttribute{
 				Description:         "The name of the organization.",
 				MarkdownDescription: "The name of the organization.",
 				Computed:            true,
+			},
+			"metadata": schema.MapAttribute{
+				Description:         "The metadata of the organization.",
+				MarkdownDescription: "The metadata of the organization as key-value string pairs.",
+				Computed:            true,
+				ElementType:         types.StringType,
 			},
 			"domains": schema.SetAttribute{
 				Description:         "The domains associated with the organization.",
@@ -112,6 +134,7 @@ func (d *OrganizationDataSource) ConfigValidators(ctx context.Context) []datasou
 		datasourcevalidator.ExactlyOneOf(
 			path.MatchRoot("id"),
 			path.MatchRoot("domain"),
+			path.MatchRoot("external_id"),
 		),
 	}
 }
@@ -176,6 +199,20 @@ func (d *OrganizationDataSource) Read(ctx context.Context, req datasource.ReadRe
 			)
 			return
 		}
+	} else if !config.ExternalID.IsNull() {
+		// Look up by external ID
+		tflog.Debug(ctx, "Reading organization by external ID", map[string]any{
+			"external_id": config.ExternalID.ValueString(),
+		})
+
+		org, err = d.client.GetOrganizationByExternalID(ctx, config.ExternalID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Reading Organization",
+				"Could not find organization with external ID "+config.ExternalID.ValueString()+": "+err.Error(),
+			)
+			return
+		}
 	}
 
 	// Map response to state
@@ -183,6 +220,25 @@ func (d *OrganizationDataSource) Read(ctx context.Context, req datasource.ReadRe
 	config.Name = types.StringValue(org.Name)
 	config.CreatedAt = types.StringValue(org.CreatedAt.Format(time.RFC3339))
 	config.UpdatedAt = types.StringValue(org.UpdatedAt.Format(time.RFC3339))
+
+	// Map external_id
+	if org.ExternalID != "" {
+		config.ExternalID = types.StringValue(org.ExternalID)
+	} else {
+		config.ExternalID = types.StringNull()
+	}
+
+	// Map metadata
+	if len(org.Metadata) > 0 {
+		metadataMap, diags := types.MapValueFrom(ctx, types.StringType, org.Metadata)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		config.Metadata = metadataMap
+	} else {
+		config.Metadata = types.MapNull(types.StringType)
+	}
 
 	// Map domains
 	if len(org.Domains) > 0 {
