@@ -117,7 +117,14 @@ terraform import workos_organization.example org_01HXYZ...
 				MarkdownDescription: "The timestamp when the organization was last updated (RFC3339 format).",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					useStateForUnknownIfConfigUnchanged{
+						configAttributes: []path.Path{
+							path.Root("name"),
+							path.Root("domains"),
+							path.Root("external_id"),
+							path.Root("metadata"),
+						},
+					},
 				},
 			},
 		},

@@ -144,7 +144,12 @@ terraform import workos_organization_role.example org_01HXYZ.../org-billing-admi
 				MarkdownDescription: "The timestamp when the role was last updated (RFC3339 format).",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					useStateForUnknownIfConfigUnchanged{
+						configAttributes: []path.Path{
+							path.Root("name"),
+							path.Root("description"),
+						},
+					},
 				},
 			},
 		},
