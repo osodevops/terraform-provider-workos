@@ -48,8 +48,14 @@ terraform import workos_organization.example org_01HXYZ...
 ```terraform
 # Manage a WorkOS Organization
 resource "workos_organization" "example" {
-  name    = "Acme Corporation"
-  domains = ["acme.com", "acmecorp.com"]
+  name        = "Acme Corporation"
+  external_id = "acme-corp-123"
+  domains     = ["acme.com", "acmecorp.com"]
+
+  metadata = {
+    tier   = "enterprise"
+    region = "us-east-1"
+  }
 }
 
 # Output the organization ID for use in other resources
