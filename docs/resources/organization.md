@@ -72,6 +72,8 @@ output "organization_created_at" {
 ### Optional
 
 - `domains` (Set of String) The domains associated with the organization. These are used for domain-based SSO routing.
+- `external_id` (String) The external ID of the organization. Use this to map the organization to an entity in your application.
+- `metadata` (Map of String) Metadata key/value pairs associated with the organization. Maximum of 10 key/value pairs.
 
 ### Read-Only
 

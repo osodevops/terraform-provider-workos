@@ -7,12 +7,14 @@ import "time"
 
 // Organization represents a WorkOS Organization
 type Organization struct {
-	ID        string    `json:"id"`
-	Object    string    `json:"object"`
-	Name      string    `json:"name"`
-	Domains   []Domain  `json:"domains,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID         string            `json:"id"`
+	Object     string            `json:"object"`
+	Name       string            `json:"name"`
+	ExternalID string            `json:"external_id,omitempty"`
+	Metadata   map[string]string `json:"metadata,omitempty"`
+	Domains    []Domain          `json:"domains,omitempty"`
+	CreatedAt  time.Time         `json:"created_at"`
+	UpdatedAt  time.Time         `json:"updated_at"`
 }
 
 // Domain represents a domain associated with an organization
@@ -27,8 +29,10 @@ type Domain struct {
 
 // OrganizationCreateRequest represents the request to create an organization
 type OrganizationCreateRequest struct {
-	Name       string       `json:"name"`
-	DomainData []DomainData `json:"domain_data,omitempty"`
+	Name       string            `json:"name"`
+	DomainData []DomainData      `json:"domain_data,omitempty"`
+	ExternalID string            `json:"external_id,omitempty"`
+	Metadata   map[string]string `json:"metadata,omitempty"`
 }
 
 // DomainData represents domain data for organization creation/update
@@ -39,8 +43,10 @@ type DomainData struct {
 
 // OrganizationUpdateRequest represents the request to update an organization
 type OrganizationUpdateRequest struct {
-	Name       string       `json:"name,omitempty"`
-	DomainData []DomainData `json:"domain_data,omitempty"`
+	Name       string            `json:"name,omitempty"`
+	DomainData []DomainData      `json:"domain_data,omitempty"`
+	ExternalID string            `json:"external_id,omitempty"`
+	Metadata   map[string]string `json:"metadata,omitempty"`
 }
 
 // OrganizationListResponse represents the response from listing organizations

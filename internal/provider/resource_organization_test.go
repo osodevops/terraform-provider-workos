@@ -71,6 +71,42 @@ func TestAccOrganizationResource_WithDomains(t *testing.T) {
 	})
 }
 
+func TestAccOrganizationResource_WithMetadataAndExternalID(t *testing.T) {
+	name := fmt.Sprintf("tf-acc-test-%d", time.Now().UnixNano())
+	externalID := fmt.Sprintf("ext-%d", time.Now().UnixNano())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create with external_id and metadata
+			{
+				Config: testAccOrganizationResourceConfigWithMetadata(name, externalID, "env", "test"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("workos_organization.test", "name", name),
+					resource.TestCheckResourceAttr("workos_organization.test", "external_id", externalID),
+					resource.TestCheckResourceAttr("workos_organization.test", "metadata.env", "test"),
+					resource.TestCheckResourceAttrSet("workos_organization.test", "id"),
+				),
+			},
+			// ImportState testing
+			{
+				ResourceName:      "workos_organization.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// Update external_id and metadata
+			{
+				Config: testAccOrganizationResourceConfigWithMetadata(name, externalID+"-updated", "env", "production"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("workos_organization.test", "external_id", externalID+"-updated"),
+					resource.TestCheckResourceAttr("workos_organization.test", "metadata.env", "production"),
+				),
+			},
+		},
+	})
+}
+
 func testAccOrganizationResourceConfig(name string) string {
 	return fmt.Sprintf(`
 resource "workos_organization" "test" {
@@ -86,5 +122,17 @@ resource "workos_organization" "test" {
   domains = [%[2]q]
 }
 `, name, domain)
+}
+
+func testAccOrganizationResourceConfigWithMetadata(name, externalID, metadataKey, metadataValue string) string {
+	return fmt.Sprintf(`
+resource "workos_organization" "test" {
+  name        = %[1]q
+  external_id = %[2]q
+  metadata = {
+    %[3]s = %[4]q
+  }
+}
+`, name, externalID, metadataKey, metadataValue)
 }
 

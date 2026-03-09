@@ -33,11 +33,13 @@ type OrganizationResource struct {
 
 // OrganizationResourceModel describes the resource data model.
 type OrganizationResourceModel struct {
-	ID        types.String `tfsdk:"id"`
-	Name      types.String `tfsdk:"name"`
-	Domains   types.Set    `tfsdk:"domains"`
-	CreatedAt types.String `tfsdk:"created_at"`
-	UpdatedAt types.String `tfsdk:"updated_at"`
+	ID         types.String `tfsdk:"id"`
+	Name       types.String `tfsdk:"name"`
+	ExternalID types.String `tfsdk:"external_id"`
+	Metadata   types.Map    `tfsdk:"metadata"`
+	Domains    types.Set    `tfsdk:"domains"`
+	CreatedAt  types.String `tfsdk:"created_at"`
+	UpdatedAt  types.String `tfsdk:"updated_at"`
 }
 
 func (r *OrganizationResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -83,6 +85,17 @@ terraform import workos_organization.example org_01HXYZ...
 				Description:         "The name of the organization.",
 				MarkdownDescription: "The name of the organization. Must be between 1 and 255 characters.",
 				Required:            true,
+			},
+			"external_id": schema.StringAttribute{
+				Description:         "The external ID of the organization.",
+				MarkdownDescription: "The external ID of the organization. Use this to map the organization to an entity in your application.",
+				Optional:            true,
+			},
+			"metadata": schema.MapAttribute{
+				Description:         "Metadata key/value pairs associated with the organization.",
+				MarkdownDescription: "Metadata key/value pairs associated with the organization. Maximum of 10 key/value pairs.",
+				Optional:            true,
+				ElementType:         types.StringType,
 			},
 			"domains": schema.SetAttribute{
 				Description:         "The domains associated with the organization.",
@@ -148,6 +161,21 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 		Name: plan.Name.ValueString(),
 	}
 
+	// Add external_id if specified
+	if !plan.ExternalID.IsNull() && !plan.ExternalID.IsUnknown() {
+		createReq.ExternalID = plan.ExternalID.ValueString()
+	}
+
+	// Add metadata if specified
+	if !plan.Metadata.IsNull() && !plan.Metadata.IsUnknown() {
+		metadata := make(map[string]string)
+		resp.Diagnostics.Append(plan.Metadata.ElementsAs(ctx, &metadata, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		createReq.Metadata = metadata
+	}
+
 	// Add domains if specified
 	if !plan.Domains.IsNull() && !plan.Domains.IsUnknown() {
 		var domains []string
@@ -178,6 +206,21 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 	plan.ID = types.StringValue(org.ID)
 	plan.CreatedAt = types.StringValue(org.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(org.UpdatedAt.Format(time.RFC3339))
+
+	// Map external_id from response
+	if org.ExternalID != "" {
+		plan.ExternalID = types.StringValue(org.ExternalID)
+	}
+
+	// Map metadata from response
+	if len(org.Metadata) > 0 {
+		metadataMap, diags := types.MapValueFrom(ctx, types.StringType, org.Metadata)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		plan.Metadata = metadataMap
+	}
 
 	tflog.Info(ctx, "Created organization", map[string]any{
 		"id":   org.ID,
@@ -225,6 +268,25 @@ func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadReques
 	state.CreatedAt = types.StringValue(org.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(org.UpdatedAt.Format(time.RFC3339))
 
+	// Map external_id
+	if org.ExternalID != "" {
+		state.ExternalID = types.StringValue(org.ExternalID)
+	} else {
+		state.ExternalID = types.StringNull()
+	}
+
+	// Map metadata
+	if len(org.Metadata) > 0 {
+		metadataMap, diags := types.MapValueFrom(ctx, types.StringType, org.Metadata)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.Metadata = metadataMap
+	} else {
+		state.Metadata = types.MapNull(types.StringType)
+	}
+
 	// Map domains
 	if len(org.Domains) > 0 {
 		domainStrings := make([]string, len(org.Domains))
@@ -263,7 +325,7 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 	})
 
 	// Skip update if no user-configurable attributes changed
-	if plan.Name.Equal(state.Name) && plan.Domains.Equal(state.Domains) {
+	if plan.Name.Equal(state.Name) && plan.Domains.Equal(state.Domains) && plan.ExternalID.Equal(state.ExternalID) && plan.Metadata.Equal(state.Metadata) {
 		plan.ID = state.ID
 		plan.CreatedAt = state.CreatedAt
 		plan.UpdatedAt = state.UpdatedAt
@@ -274,6 +336,21 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 	// Build the update request
 	updateReq := &client.OrganizationUpdateRequest{
 		Name: plan.Name.ValueString(),
+	}
+
+	// Add external_id if specified
+	if !plan.ExternalID.IsNull() && !plan.ExternalID.IsUnknown() {
+		updateReq.ExternalID = plan.ExternalID.ValueString()
+	}
+
+	// Add metadata if specified
+	if !plan.Metadata.IsNull() && !plan.Metadata.IsUnknown() {
+		metadata := make(map[string]string)
+		resp.Diagnostics.Append(plan.Metadata.ElementsAs(ctx, &metadata, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		updateReq.Metadata = metadata
 	}
 
 	// Add domains if specified
@@ -306,6 +383,21 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 	plan.ID = state.ID
 	plan.CreatedAt = state.CreatedAt
 	plan.UpdatedAt = types.StringValue(org.UpdatedAt.Format(time.RFC3339))
+
+	// Map external_id from response
+	if org.ExternalID != "" {
+		plan.ExternalID = types.StringValue(org.ExternalID)
+	}
+
+	// Map metadata from response
+	if len(org.Metadata) > 0 {
+		metadataMap, diags := types.MapValueFrom(ctx, types.StringType, org.Metadata)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		plan.Metadata = metadataMap
+	}
 
 	tflog.Info(ctx, "Updated organization", map[string]any{
 		"id":   org.ID,
