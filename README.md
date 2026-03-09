@@ -1,6 +1,6 @@
 # WorkOS Terraform Provider
 
-Terraform provider for managing [WorkOS](https://workos.com) resources including organizations, users, organization memberships, and roles.
+Terraform provider for managing [WorkOS](https://workos.com) resources including organizations, users, organization memberships, roles, and permissions.
 
 ## Requirements
 
@@ -95,6 +95,38 @@ resource "workos_organization_role" "viewer" {
 }
 ```
 
+### Managing Permissions
+
+```hcl
+resource "workos_permission" "billing_read" {
+  slug        = "billing:read"
+  name        = "Read Billing"
+  description = "Allows reading billing data"
+}
+
+resource "workos_permission" "billing_write" {
+  slug        = "billing:write"
+  name        = "Write Billing"
+  description = "Allows modifying billing data"
+}
+```
+
+### Assigning Permissions to Organization Roles
+
+```hcl
+resource "workos_organization_role_permission" "billing_admin_read" {
+  organization_id = workos_organization.example.id
+  role_slug       = workos_organization_role.billing_admin.slug
+  permission      = workos_permission.billing_read.slug
+}
+
+resource "workos_organization_role_permission" "billing_admin_write" {
+  organization_id = workos_organization.example.id
+  role_slug       = workos_organization_role.billing_admin.slug
+  permission      = workos_permission.billing_write.slug
+}
+```
+
 ### Data Sources
 
 ```hcl
@@ -118,6 +150,11 @@ data "workos_organization_role" "billing" {
   organization_id = workos_organization.example.id
   slug            = "org-billing-admin"
 }
+
+# Look up permission by slug
+data "workos_permission" "billing_read" {
+  slug = "billing:read"
+}
 ```
 
 ## Resources
@@ -128,6 +165,8 @@ data "workos_organization_role" "billing" {
 | `workos_user` | Manages AuthKit users |
 | `workos_organization_membership` | Manages user-organization memberships |
 | `workos_organization_role` | Manages organization authorization roles |
+| `workos_permission` | Manages environment-level permissions |
+| `workos_organization_role_permission` | Assigns a permission to an organization role |
 
 ## Data Sources
 
@@ -140,6 +179,7 @@ data "workos_organization_role" "billing" {
 | `workos_directory_group` | Retrieves directory-synced group |
 | `workos_user` | Retrieves AuthKit user by ID or email |
 | `workos_organization_role` | Retrieves organization role by slug or ID |
+| `workos_permission` | Retrieves permission by slug |
 
 ## Development
 
