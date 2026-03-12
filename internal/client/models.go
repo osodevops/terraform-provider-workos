@@ -242,8 +242,8 @@ type PermissionCreateRequest struct {
 
 // PermissionUpdateRequest represents the request to update a permission
 type PermissionUpdateRequest struct {
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 // PermissionListResponse represents the response from listing permissions

@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
 	"github.com/osodevops/terraform-provider-workos/internal/client"
 )
 
@@ -132,6 +133,14 @@ terraform import workos_permission.example billing:read
 				Description:         "The timestamp when the permission was last updated.",
 				MarkdownDescription: "The timestamp when the permission was last updated (RFC3339 format).",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					useStateForUnknownIfConfigUnchanged{
+						configAttributes: []path.Path{
+							path.Root("name"),
+							path.Root("description"),
+						},
+					},
+				},
 			},
 		},
 	}
