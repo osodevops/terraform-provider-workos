@@ -48,8 +48,14 @@ terraform import workos_organization.example org_01HXYZ...
 ```terraform
 # Manage a WorkOS Organization
 resource "workos_organization" "example" {
-  name    = "Acme Corporation"
-  domains = ["acme.com", "acmecorp.com"]
+  name        = "Acme Corporation"
+  external_id = "acme-corp-123"
+  domains     = ["acme.com", "acmecorp.com"]
+
+  metadata = {
+    tier   = "enterprise"
+    region = "us-east-1"
+  }
 }
 
 # Output the organization ID for use in other resources
@@ -72,6 +78,8 @@ output "organization_created_at" {
 ### Optional
 
 - `domains` (Set of String) The domains associated with the organization. These are used for domain-based SSO routing.
+- `external_id` (String) The external ID of the organization. Use this to map the organization to an entity in your application.
+- `metadata` (Map of String) Metadata key/value pairs associated with the organization. Maximum of 10 key/value pairs.
 
 ### Read-Only
 

@@ -166,7 +166,14 @@ if password authentication is required.
 				MarkdownDescription: "The timestamp when the user was last updated (RFC3339 format).",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					useStateForUnknownIfConfigUnchanged{
+						configAttributes: []path.Path{
+							path.Root("email"),
+							path.Root("email_verified"),
+							path.Root("first_name"),
+							path.Root("last_name"),
+						},
+					},
 				},
 			},
 		},
@@ -340,10 +347,10 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	updateReq := &client.UserUpdateRequest{}
 
-	if !plan.EmailVerified.Equal(state.EmailVerified) {
-		emailVerified := plan.EmailVerified.ValueBool()
-		updateReq.EmailVerified = &emailVerified
-	}
+	// Always include email_verified — the API may reset it when the email changes.
+	emailVerified := plan.EmailVerified.ValueBool()
+	updateReq.EmailVerified = &emailVerified
+
 	if !plan.Email.Equal(state.Email) {
 		updateReq.Email = plan.Email.ValueString()
 	}

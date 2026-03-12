@@ -59,6 +59,16 @@ func (c *Client) ListOrganizations(ctx context.Context) (*OrganizationListRespon
 	return &resp, nil
 }
 
+// GetOrganizationByExternalID retrieves an organization by external ID
+func (c *Client) GetOrganizationByExternalID(ctx context.Context, externalID string) (*Organization, error) {
+	var org Organization
+	err := c.Get(ctx, "/organizations/external_id/"+externalID, &org)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization by external ID: %w", err)
+	}
+	return &org, nil
+}
+
 // ListOrganizationsByDomain returns all organizations matching a given domain
 func (c *Client) ListOrganizationsByDomain(ctx context.Context, domain string) ([]Organization, error) {
 	params := url.Values{}

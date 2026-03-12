@@ -136,7 +136,11 @@ terraform import workos_organization_membership.example om_01HXYZ...
 				MarkdownDescription: "The timestamp when the membership was last updated (RFC3339 format).",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					useStateForUnknownIfConfigUnchanged{
+						configAttributes: []path.Path{
+							path.Root("role_slug"),
+						},
+					},
 				},
 			},
 		},
