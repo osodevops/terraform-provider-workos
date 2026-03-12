@@ -218,3 +218,41 @@ type OrganizationRoleListResponse struct {
 	Data         []OrganizationRole `json:"data"`
 	ListMetadata ListMetadata       `json:"list_metadata"`
 }
+
+// Permission represents a WorkOS Permission
+type Permission struct {
+	ID               string    `json:"id"`
+	Object           string    `json:"object"`
+	Slug             string    `json:"slug"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description,omitempty"`
+	System           bool      `json:"system"`
+	ResourceTypeSlug string    `json:"resource_type_slug,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// PermissionCreateRequest represents the request to create a permission
+type PermissionCreateRequest struct {
+	Slug             string `json:"slug"`
+	Name             string `json:"name"`
+	Description      string `json:"description,omitempty"`
+	ResourceTypeSlug string `json:"resource_type_slug,omitempty"`
+}
+
+// PermissionUpdateRequest represents the request to update a permission
+type PermissionUpdateRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// PermissionListResponse represents the response from listing permissions
+type PermissionListResponse struct {
+	Data         []Permission `json:"data"`
+	ListMetadata ListMetadata `json:"list_metadata"`
+}
+
+// AddPermissionRequest represents the request to add a permission to a role
+type AddPermissionRequest struct {
+	Slug string `json:"slug"`
+}
