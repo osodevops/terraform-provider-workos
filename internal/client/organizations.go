@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 )
 
 // CreateOrganization creates a new organization
@@ -58,8 +59,8 @@ func (c *Client) ListOrganizations(ctx context.Context) (*OrganizationListRespon
 	return &resp, nil
 }
 
-// GetOrganizationByDomain finds an organization by domain
-func (c *Client) GetOrganizationByDomain(ctx context.Context, domain string) (*Organization, error) {
+// ListOrganizationsByDomain returns all organizations matching a given domain
+func (c *Client) ListOrganizationsByDomain(ctx context.Context, domain string) ([]Organization, error) {
 	params := url.Values{}
 	params.Set("domains", domain)
 
@@ -69,12 +70,35 @@ func (c *Client) GetOrganizationByDomain(ctx context.Context, domain string) (*O
 		return nil, fmt.Errorf("failed to search organizations by domain: %w", err)
 	}
 
-	if len(resp.Data) == 0 {
+	return resp.Data, nil
+}
+
+// GetOrganizationByDomain finds a single organization by domain.
+// Returns an error if no organizations or multiple organizations match the domain.
+func (c *Client) GetOrganizationByDomain(ctx context.Context, domain string) (*Organization, error) {
+	orgs, err := c.ListOrganizationsByDomain(ctx, domain)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(orgs) == 0 {
 		return nil, &APIError{
 			StatusCode: 404,
 			Message:    fmt.Sprintf("no organization found with domain: %s", domain),
 		}
 	}
 
-	return &resp.Data[0], nil
+	if len(orgs) > 1 {
+		orgIDs := make([]string, len(orgs))
+		for i, org := range orgs {
+			orgIDs[i] = fmt.Sprintf("%s (%s)", org.ID, org.Name)
+		}
+		return nil, fmt.Errorf(
+			"ambiguous domain lookup: domain %q is associated with %d organizations: [%s]. "+
+				"Use the organization ID to look up a specific organization instead",
+			domain, len(orgs), strings.Join(orgIDs, ", "),
+		)
+	}
+
+	return &orgs[0], nil
 }
