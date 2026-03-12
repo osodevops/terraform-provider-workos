@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -156,6 +157,12 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 			return
 		}
 
+		// Validate that domains are not already in use by another organization
+		r.validateDomainUniqueness(ctx, domains, "", &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
 		for _, domain := range domains {
 			createReq.DomainData = append(createReq.DomainData, client.DomainData{
 				Domain: domain,
@@ -284,6 +291,12 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 			return
 		}
 
+		// Validate that domains are not already in use by another organization
+		r.validateDomainUniqueness(ctx, domains, state.ID.ValueString(), &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
 		for _, domain := range domains {
 			updateReq.DomainData = append(updateReq.DomainData, client.DomainData{
 				Domain: domain,
@@ -359,4 +372,36 @@ func (r *OrganizationResource) ImportState(ctx context.Context, req resource.Imp
 	})
 
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// validateDomainUniqueness checks that the given domains are not already assigned
+// to a different organization. excludeOrgID can be empty for creates.
+func (r *OrganizationResource) validateDomainUniqueness(ctx context.Context, domains []string, excludeOrgID string, diags *diag.Diagnostics) {
+	for _, domain := range domains {
+		orgs, err := r.client.ListOrganizationsByDomain(ctx, domain)
+		if err != nil {
+			diags.AddError(
+				"Error Checking Domain Uniqueness",
+				fmt.Sprintf("Could not check if domain %q is already in use: %s", domain, err.Error()),
+			)
+			return
+		}
+
+		for _, org := range orgs {
+			if org.ID != excludeOrgID {
+				diags.AddError(
+					"Domain Already In Use",
+					fmt.Sprintf(
+						"Domain %q is already associated with organization %q (%s). "+
+							"The WorkOS API does not enforce domain uniqueness, but assigning the same "+
+							"domain to multiple organizations can cause unpredictable SSO routing and "+
+							"data source lookups. Remove the domain from the existing organization first, "+
+							"or use a different domain.",
+						domain, org.Name, org.ID,
+					),
+				)
+				return
+			}
+		}
+	}
 }
