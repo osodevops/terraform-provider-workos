@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -41,6 +42,10 @@ type UserResourceModel struct {
 	LastName          types.String `tfsdk:"last_name"`
 	Password          types.String `tfsdk:"password"`
 	PasswordHash      types.String `tfsdk:"password_hash"`
+	PasswordHashType  types.String `tfsdk:"password_hash_type"`
+	ExternalID        types.String `tfsdk:"external_id"`
+	Metadata          types.Map    `tfsdk:"metadata"`
+	Locale            types.String `tfsdk:"locale"`
 	ProfilePictureURL types.String `tfsdk:"profile_picture_url"`
 	CreatedAt         types.String `tfsdk:"created_at"`
 	UpdatedAt         types.String `tfsdk:"updated_at"`
@@ -70,6 +75,23 @@ resource "workos_user" "example" {
   first_name     = "John"
   last_name      = "Doe"
   email_verified = true
+}
+` + "```" + `
+
+### User with External ID and Metadata
+
+` + "```hcl" + `
+resource "workos_user" "with_metadata" {
+  email          = "user@example.com"
+  first_name     = "Jane"
+  last_name      = "Smith"
+  external_id    = "ext-12345"
+  email_verified = true
+
+  metadata = {
+    department = "Engineering"
+    timezone   = "America/New_York"
+  }
 }
 ` + "```" + `
 
@@ -138,9 +160,41 @@ if password authentication is required.
 			},
 			"password_hash": schema.StringAttribute{
 				Description:         "A pre-hashed password. Write-only, not returned by API.",
-				MarkdownDescription: "A pre-hashed password (bcrypt). This is a write-only field and is not returned by the API. Use this if you're migrating users with existing password hashes.",
+				MarkdownDescription: "A pre-hashed password (bcrypt or argon2). This is a write-only field and is not returned by the API. Use this if you're migrating users with existing password hashes.",
 				Optional:            true,
 				Sensitive:           true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"password_hash_type": schema.StringAttribute{
+				Description:         "The type of password hash. Write-only, used with password_hash.",
+				MarkdownDescription: "The type of password hash (e.g., `bcrypt`, `argon2`). This is a write-only field used only during creation alongside `password_hash`.",
+				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"external_id": schema.StringAttribute{
+				Description:         "An external identifier for the user.",
+				MarkdownDescription: "An external identifier for the user. Useful for mapping to identifiers in external systems.",
+				Optional:            true,
+				Computed:            true,
+			},
+			"metadata": schema.MapAttribute{
+				Description:         "Custom metadata for the user.",
+				MarkdownDescription: "Custom metadata for the user as key-value string pairs.",
+				Optional:            true,
+				Computed:            true,
+				ElementType:         types.StringType,
+				PlanModifiers: []planmodifier.Map{
+					mapplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"locale": schema.StringAttribute{
+				Description:         "The user's locale.",
+				MarkdownDescription: "The user's locale (e.g., `en-US`). Set by the system based on user activity.",
+				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -172,6 +226,8 @@ if password authentication is required.
 							path.Root("email_verified"),
 							path.Root("first_name"),
 							path.Root("last_name"),
+							path.Root("external_id"),
+							path.Root("metadata"),
 						},
 					},
 				},
@@ -226,6 +282,20 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 	if !plan.PasswordHash.IsNull() {
 		createReq.PasswordHash = plan.PasswordHash.ValueString()
 	}
+	if !plan.PasswordHashType.IsNull() {
+		createReq.PasswordHashType = plan.PasswordHashType.ValueString()
+	}
+	if !plan.ExternalID.IsNull() {
+		createReq.ExternalID = plan.ExternalID.ValueString()
+	}
+	if !plan.Metadata.IsNull() {
+		metadata := make(map[string]string)
+		resp.Diagnostics.Append(plan.Metadata.ElementsAs(ctx, &metadata, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		createReq.Metadata = metadata
+	}
 
 	user, err := r.client.CreateUser(ctx, createReq)
 	if err != nil {
@@ -250,6 +320,23 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 		plan.ProfilePictureURL = types.StringValue(user.ProfilePictureURL)
 	} else {
 		plan.ProfilePictureURL = types.StringNull()
+	}
+	if user.ExternalID != "" {
+		plan.ExternalID = types.StringValue(user.ExternalID)
+	} else {
+		plan.ExternalID = types.StringNull()
+	}
+	if len(user.Metadata) > 0 {
+		metadataMap, diags := types.MapValueFrom(ctx, types.StringType, user.Metadata)
+		resp.Diagnostics.Append(diags...)
+		plan.Metadata = metadataMap
+	} else {
+		plan.Metadata = types.MapNull(types.StringType)
+	}
+	if user.Locale != "" {
+		plan.Locale = types.StringValue(user.Locale)
+	} else {
+		plan.Locale = types.StringNull()
 	}
 	plan.CreatedAt = types.StringValue(user.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(user.UpdatedAt.Format(time.RFC3339))
@@ -309,10 +396,27 @@ func (r *UserResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	} else {
 		state.ProfilePictureURL = types.StringNull()
 	}
+	if user.ExternalID != "" {
+		state.ExternalID = types.StringValue(user.ExternalID)
+	} else {
+		state.ExternalID = types.StringNull()
+	}
+	if len(user.Metadata) > 0 {
+		metadataMap, diags := types.MapValueFrom(ctx, types.StringType, user.Metadata)
+		resp.Diagnostics.Append(diags...)
+		state.Metadata = metadataMap
+	} else {
+		state.Metadata = types.MapNull(types.StringType)
+	}
+	if user.Locale != "" {
+		state.Locale = types.StringValue(user.Locale)
+	} else {
+		state.Locale = types.StringNull()
+	}
 	state.CreatedAt = types.StringValue(user.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(user.UpdatedAt.Format(time.RFC3339))
 
-	// Note: Password and PasswordHash are not returned by the API, preserve state values
+	// Note: Password, PasswordHash, and PasswordHashType are not returned by the API, preserve state values
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -336,11 +440,14 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if plan.Email.Equal(state.Email) &&
 		plan.EmailVerified.Equal(state.EmailVerified) &&
 		plan.FirstName.Equal(state.FirstName) &&
-		plan.LastName.Equal(state.LastName) {
+		plan.LastName.Equal(state.LastName) &&
+		plan.ExternalID.Equal(state.ExternalID) &&
+		plan.Metadata.Equal(state.Metadata) {
 		plan.ID = state.ID
 		plan.CreatedAt = state.CreatedAt
 		plan.UpdatedAt = state.UpdatedAt
 		plan.ProfilePictureURL = state.ProfilePictureURL
+		plan.Locale = state.Locale
 		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		return
 	}
@@ -359,6 +466,17 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	}
 	if !plan.LastName.Equal(state.LastName) {
 		updateReq.LastName = plan.LastName.ValueString()
+	}
+	if !plan.ExternalID.Equal(state.ExternalID) {
+		updateReq.ExternalID = plan.ExternalID.ValueString()
+	}
+	if !plan.Metadata.Equal(state.Metadata) {
+		metadata := make(map[string]string)
+		resp.Diagnostics.Append(plan.Metadata.ElementsAs(ctx, &metadata, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		updateReq.Metadata = metadata
 	}
 
 	user, err := r.client.UpdateUser(ctx, state.ID.ValueString(), updateReq)
@@ -384,6 +502,23 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		plan.ProfilePictureURL = types.StringValue(user.ProfilePictureURL)
 	} else {
 		plan.ProfilePictureURL = types.StringNull()
+	}
+	if user.ExternalID != "" {
+		plan.ExternalID = types.StringValue(user.ExternalID)
+	} else {
+		plan.ExternalID = types.StringNull()
+	}
+	if len(user.Metadata) > 0 {
+		metadataMap, diags := types.MapValueFrom(ctx, types.StringType, user.Metadata)
+		resp.Diagnostics.Append(diags...)
+		plan.Metadata = metadataMap
+	} else {
+		plan.Metadata = types.MapNull(types.StringType)
+	}
+	if user.Locale != "" {
+		plan.Locale = types.StringValue(user.Locale)
+	} else {
+		plan.Locale = types.StringNull()
 	}
 	plan.CreatedAt = state.CreatedAt
 	plan.UpdatedAt = types.StringValue(user.UpdatedAt.Format(time.RFC3339))
@@ -437,8 +572,8 @@ func (r *UserResource) ImportState(ctx context.Context, req resource.ImportState
 
 	// Note: Password and PasswordHash cannot be imported
 	resp.Diagnostics.AddWarning(
-		"Password Not Imported",
-		"The user's password cannot be imported from the API. If password authentication "+
-			"is required, you must set the 'password' attribute in your configuration.",
+		"Write-Only Fields Not Imported",
+		"The user's password, password_hash, and password_hash_type cannot be imported from the API. "+
+			"If password authentication is required, you must set these attributes in your configuration.",
 	)
 }

@@ -139,33 +139,41 @@ type DirectoryGroup struct {
 
 // User represents a WorkOS AuthKit User
 type User struct {
-	ID             string    `json:"id"`
-	Object         string    `json:"object"`
-	Email          string    `json:"email"`
-	EmailVerified  bool      `json:"email_verified"`
-	FirstName      string    `json:"first_name,omitempty"`
-	LastName       string    `json:"last_name,omitempty"`
-	ProfilePictureURL string `json:"profile_picture_url,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID                string            `json:"id"`
+	Object            string            `json:"object"`
+	Email             string            `json:"email"`
+	EmailVerified     bool              `json:"email_verified"`
+	FirstName         string            `json:"first_name,omitempty"`
+	LastName          string            `json:"last_name,omitempty"`
+	ProfilePictureURL string            `json:"profile_picture_url,omitempty"`
+	ExternalID        string            `json:"external_id,omitempty"`
+	Metadata          map[string]string `json:"metadata,omitempty"`
+	Locale            string            `json:"locale,omitempty"`
+	CreatedAt         time.Time         `json:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at"`
 }
 
 // UserCreateRequest represents the request to create a user
 type UserCreateRequest struct {
-	Email         string `json:"email"`
-	Password      string `json:"password,omitempty"`
-	PasswordHash  string `json:"password_hash,omitempty"`
-	FirstName     string `json:"first_name,omitempty"`
-	LastName      string `json:"last_name,omitempty"`
-	EmailVerified bool   `json:"email_verified,omitempty"`
+	Email            string            `json:"email"`
+	Password         string            `json:"password,omitempty"`
+	PasswordHash     string            `json:"password_hash,omitempty"`
+	PasswordHashType string            `json:"password_hash_type,omitempty"`
+	FirstName        string            `json:"first_name,omitempty"`
+	LastName         string            `json:"last_name,omitempty"`
+	EmailVerified    bool              `json:"email_verified,omitempty"`
+	ExternalID       string            `json:"external_id,omitempty"`
+	Metadata         map[string]string `json:"metadata,omitempty"`
 }
 
 // UserUpdateRequest represents the request to update a user
 type UserUpdateRequest struct {
-	Email         string `json:"email,omitempty"`
-	FirstName     string `json:"first_name,omitempty"`
-	LastName      string `json:"last_name,omitempty"`
-	EmailVerified *bool  `json:"email_verified,omitempty"`
+	Email         string            `json:"email,omitempty"`
+	FirstName     string            `json:"first_name,omitempty"`
+	LastName      string            `json:"last_name,omitempty"`
+	EmailVerified *bool             `json:"email_verified,omitempty"`
+	ExternalID    string            `json:"external_id,omitempty"`
+	Metadata      map[string]string `json:"metadata,omitempty"`
 }
 
 // OrganizationMembership represents a user's membership in an organization

@@ -74,7 +74,13 @@ resource "workos_user" "admin" {
   email          = "admin@example.com"
   first_name     = "Admin"
   last_name      = "User"
+  external_id    = "admin-001"
   email_verified = true
+
+  metadata = {
+    department = "Engineering"
+    title      = "Platform Lead"
+  }
 }
 
 resource "workos_organization_membership" "admin" {
@@ -156,6 +162,11 @@ data "workos_user" "john" {
   email = "john@example.com"
 }
 
+# Look up user by external ID
+data "workos_user" "by_ext" {
+  external_id = "admin-001"
+}
+
 # Look up organization role by slug
 data "workos_organization_role" "billing" {
   organization_id = workos_organization.example.id
@@ -188,7 +199,7 @@ data "workos_permission" "billing_read" {
 | `workos_directory` | Retrieves directory by ID or organization (read-only) |
 | `workos_directory_user` | Retrieves directory-synced user |
 | `workos_directory_group` | Retrieves directory-synced group |
-| `workos_user` | Retrieves AuthKit user by ID or email |
+| `workos_user` | Retrieves AuthKit user by ID, email, or external ID |
 | `workos_organization_role` | Retrieves organization role by slug or ID |
 | `workos_permission` | Retrieves permission by slug |
 
