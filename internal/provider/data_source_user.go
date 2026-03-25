@@ -34,6 +34,9 @@ type UserDataSourceModel struct {
 	EmailVerified     types.Bool   `tfsdk:"email_verified"`
 	FirstName         types.String `tfsdk:"first_name"`
 	LastName          types.String `tfsdk:"last_name"`
+	ExternalID        types.String `tfsdk:"external_id"`
+	Metadata          types.Map    `tfsdk:"metadata"`
+	Locale            types.String `tfsdk:"locale"`
 	ProfilePictureURL types.String `tfsdk:"profile_picture_url"`
 	CreatedAt         types.String `tfsdk:"created_at"`
 	UpdatedAt         types.String `tfsdk:"updated_at"`
@@ -74,6 +77,14 @@ output "user_name" {
   value = "${data.workos_user.by_email.first_name} ${data.workos_user.by_email.last_name}"
 }
 ` + "```" + `
+
+### Lookup by External ID
+
+` + "```hcl" + `
+data "workos_user" "by_external_id" {
+  external_id = "ext-12345"
+}
+` + "```" + `
 `,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -84,7 +95,7 @@ output "user_name" {
 			},
 			"email": schema.StringAttribute{
 				Description:         "The user's email address.",
-				MarkdownDescription: "The user's email address. Either `id` or `email` must be specified.",
+				MarkdownDescription: "The user's email address. Either `id`, `email`, or `external_id` must be specified.",
 				Optional:            true,
 				Computed:            true,
 			},
@@ -101,6 +112,23 @@ output "user_name" {
 			"last_name": schema.StringAttribute{
 				Description:         "The user's last name.",
 				MarkdownDescription: "The user's last name.",
+				Computed:            true,
+			},
+			"external_id": schema.StringAttribute{
+				Description:         "An external identifier for the user.",
+				MarkdownDescription: "An external identifier for the user. Can be used as a lookup key — either `id`, `email`, or `external_id` must be specified.",
+				Optional:            true,
+				Computed:            true,
+			},
+			"metadata": schema.MapAttribute{
+				Description:         "Custom metadata for the user.",
+				MarkdownDescription: "Custom metadata for the user as key-value string pairs.",
+				Computed:            true,
+				ElementType:         types.StringType,
+			},
+			"locale": schema.StringAttribute{
+				Description:         "The user's locale.",
+				MarkdownDescription: "The user's locale (e.g., `en-US`).",
 				Computed:            true,
 			},
 			"profile_picture_url": schema.StringAttribute{
@@ -160,10 +188,15 @@ func (d *UserDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 			"email": data.Email.ValueString(),
 		})
 		user, err = d.client.GetUserByEmail(ctx, data.Email.ValueString())
+	} else if !data.ExternalID.IsNull() && data.ExternalID.ValueString() != "" {
+		tflog.Debug(ctx, "Looking up user by external ID", map[string]any{
+			"external_id": data.ExternalID.ValueString(),
+		})
+		user, err = d.client.GetUserByExternalID(ctx, data.ExternalID.ValueString())
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",
-			"Either 'id' or 'email' must be specified to look up a user.",
+			"Either 'id', 'email', or 'external_id' must be specified to look up a user.",
 		)
 		return
 	}
@@ -194,6 +227,23 @@ func (d *UserDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		data.ProfilePictureURL = types.StringValue(user.ProfilePictureURL)
 	} else {
 		data.ProfilePictureURL = types.StringNull()
+	}
+	if user.ExternalID != "" {
+		data.ExternalID = types.StringValue(user.ExternalID)
+	} else {
+		data.ExternalID = types.StringNull()
+	}
+	if len(user.Metadata) > 0 {
+		metadataMap, diags := types.MapValueFrom(ctx, types.StringType, user.Metadata)
+		resp.Diagnostics.Append(diags...)
+		data.Metadata = metadataMap
+	} else {
+		data.Metadata = types.MapNull(types.StringType)
+	}
+	if user.Locale != "" {
+		data.Locale = types.StringValue(user.Locale)
+	} else {
+		data.Locale = types.StringNull()
 	}
 	data.CreatedAt = types.StringValue(user.CreatedAt.Format(time.RFC3339))
 	data.UpdatedAt = types.StringValue(user.UpdatedAt.Format(time.RFC3339))

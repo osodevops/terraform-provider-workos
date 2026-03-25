@@ -19,3 +19,20 @@ output "user_full_name" {
 output "email_verified" {
   value = data.workos_user.by_email.email_verified
 }
+
+# Look up a user by external ID
+data "workos_user" "by_external_id" {
+  external_id = "ext-jane-001"
+}
+
+output "external_user_email" {
+  value = data.workos_user.by_external_id.email
+}
+
+output "external_user_metadata" {
+  value = data.workos_user.by_external_id.metadata
+}
+
+output "external_user_locale" {
+  value = data.workos_user.by_external_id.locale
+}

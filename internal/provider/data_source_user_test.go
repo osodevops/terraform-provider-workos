@@ -75,3 +75,74 @@ data "workos_user" "test" {
 }
 `, email)
 }
+
+func TestAccUserDataSource_ByExternalID(t *testing.T) {
+	email := fmt.Sprintf("tf-acc-ds-extid-%d@example.com", time.Now().UnixNano())
+	externalID := fmt.Sprintf("ext-ds-%d", time.Now().UnixNano())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccUserDataSourceConfig_ByExternalID(email, externalID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("data.workos_user.test", "id"),
+					resource.TestCheckResourceAttr("data.workos_user.test", "email", email),
+					resource.TestCheckResourceAttr("data.workos_user.test", "external_id", externalID),
+				),
+			},
+		},
+	})
+}
+
+func testAccUserDataSourceConfig_ByExternalID(email, externalID string) string {
+	return fmt.Sprintf(`
+resource "workos_user" "test" {
+  email       = %[1]q
+  first_name  = "DS Test"
+  last_name   = "ByExternalID"
+  external_id = %[2]q
+}
+
+data "workos_user" "test" {
+  external_id = workos_user.test.external_id
+}
+`, email, externalID)
+}
+
+func TestAccUserDataSource_WithMetadata(t *testing.T) {
+	email := fmt.Sprintf("tf-acc-ds-meta-%d@example.com", time.Now().UnixNano())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccUserDataSourceConfig_WithMetadata(email),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("data.workos_user.test", "id"),
+					resource.TestCheckResourceAttr("data.workos_user.test", "metadata.team", "backend"),
+				),
+			},
+		},
+	})
+}
+
+func testAccUserDataSourceConfig_WithMetadata(email string) string {
+	return fmt.Sprintf(`
+resource "workos_user" "test" {
+  email      = %[1]q
+  first_name = "DS Test"
+  last_name  = "Metadata"
+
+  metadata = {
+    team = "backend"
+  }
+}
+
+data "workos_user" "test" {
+  id = workos_user.test.id
+}
+`, email)
+}

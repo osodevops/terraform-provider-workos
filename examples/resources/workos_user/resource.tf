@@ -6,11 +6,25 @@ resource "workos_user" "basic" {
   email_verified = true
 }
 
-# User with password authentication
-resource "workos_user" "with_password" {
+# User with external ID and metadata
+resource "workos_user" "with_metadata" {
   email          = "jane@example.com"
   first_name     = "Jane"
   last_name      = "Smith"
+  external_id    = "ext-jane-001"
+  email_verified = true
+
+  metadata = {
+    department = "Engineering"
+    timezone   = "America/New_York"
+  }
+}
+
+# User with password authentication
+resource "workos_user" "with_password" {
+  email          = "password-user@example.com"
+  first_name     = "Password"
+  last_name      = "User"
   password       = var.user_password
   email_verified = true
 }
@@ -30,11 +44,12 @@ resource "workos_user" "sso_user" {
 
 # User with pre-hashed password (for migration)
 resource "workos_user" "migrated" {
-  email          = "migrated@example.com"
-  first_name     = "Migrated"
-  last_name      = "User"
-  password_hash  = var.bcrypt_password_hash
-  email_verified = true
+  email              = "migrated@example.com"
+  first_name         = "Migrated"
+  last_name          = "User"
+  password_hash      = var.bcrypt_password_hash
+  password_hash_type = "bcrypt"
+  email_verified     = true
 }
 
 # Variables
@@ -59,4 +74,9 @@ output "user_id" {
 output "user_email" {
   value       = workos_user.basic.email
   description = "The email of the basic user"
+}
+
+output "user_external_id" {
+  value       = workos_user.with_metadata.external_id
+  description = "The external ID of the user with metadata"
 }

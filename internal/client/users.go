@@ -82,6 +82,16 @@ func (c *Client) ListUsers(ctx context.Context, email string, organizationID str
 	return &resp, nil
 }
 
+// GetUserByExternalID retrieves a user by external ID
+func (c *Client) GetUserByExternalID(ctx context.Context, externalID string) (*User, error) {
+	var user User
+	err := c.Get(ctx, "/user_management/users/external_id/"+externalID, &user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user by external ID: %w", err)
+	}
+	return &user, nil
+}
+
 // GetUserByEmail retrieves a user by email
 func (c *Client) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	resp, err := c.ListUsers(ctx, email, "")
