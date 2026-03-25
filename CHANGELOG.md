@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0](https://github.com/osodevops/terraform-provider-workos/compare/v2.1.0...v2.2.0) (2026-03-25)
+
+
+### Features
+
+* implement missing fields on user objects ([ba1daa4](https://github.com/osodevops/terraform-provider-workos/commit/ba1daa4d902592b6e6efd46061ef7f9a41a37281))
+* implement the missing fields on user objects ([778fb40](https://github.com/osodevops/terraform-provider-workos/commit/778fb40901085c5ecc762dea707129b9710b1b6b))
+
 ## [2.1.0](https://github.com/osodevops/terraform-provider-workos/compare/v2.0.0...v2.1.0) (2026-03-13)
 
 
