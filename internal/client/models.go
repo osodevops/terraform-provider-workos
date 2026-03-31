@@ -176,16 +176,21 @@ type UserUpdateRequest struct {
 	Metadata      map[string]string `json:"metadata,omitempty"`
 }
 
+// OrganizationMembershipRole represents the role assigned in a membership
+type OrganizationMembershipRole struct {
+	Slug string `json:"slug"`
+}
+
 // OrganizationMembership represents a user's membership in an organization
 type OrganizationMembership struct {
-	ID             string    `json:"id"`
-	Object         string    `json:"object"`
-	UserID         string    `json:"user_id"`
-	OrganizationID string    `json:"organization_id"`
-	RoleSlug       string    `json:"role_slug,omitempty"`
-	Status         string    `json:"status"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             string                      `json:"id"`
+	Object         string                      `json:"object"`
+	UserID         string                      `json:"user_id"`
+	OrganizationID string                      `json:"organization_id"`
+	Role           OrganizationMembershipRole  `json:"role"`
+	Status         string                      `json:"status"`
+	CreatedAt      time.Time                   `json:"created_at"`
+	UpdatedAt      time.Time                   `json:"updated_at"`
 }
 
 // OrganizationMembershipCreateRequest represents the request to create a membership
@@ -193,6 +198,11 @@ type OrganizationMembershipCreateRequest struct {
 	UserID         string `json:"user_id"`
 	OrganizationID string `json:"organization_id"`
 	RoleSlug       string `json:"role_slug,omitempty"`
+}
+
+// OrganizationMembershipUpdateRequest represents the request to update a membership
+type OrganizationMembershipUpdateRequest struct {
+	RoleSlug string `json:"role_slug,omitempty"`
 }
 
 // OrganizationRole represents a WorkOS Organization Role
