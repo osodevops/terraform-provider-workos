@@ -182,7 +182,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 		OrganizationID: plan.OrganizationID.ValueString(),
 	}
 
-	if !plan.RoleSlug.IsNull() {
+	if !plan.RoleSlug.IsNull() && !plan.RoleSlug.IsUnknown() {
 		createReq.RoleSlug = plan.RoleSlug.ValueString()
 	}
 
