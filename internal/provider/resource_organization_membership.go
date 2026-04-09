@@ -182,7 +182,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 		OrganizationID: plan.OrganizationID.ValueString(),
 	}
 
-	if !plan.RoleSlug.IsNull() {
+	if !plan.RoleSlug.IsNull() && !plan.RoleSlug.IsUnknown() {
 		createReq.RoleSlug = plan.RoleSlug.ValueString()
 	}
 
@@ -199,12 +199,8 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	plan.ID = types.StringValue(membership.ID)
 	plan.UserID = types.StringValue(membership.UserID)
 	plan.OrganizationID = types.StringValue(membership.OrganizationID)
-	// The API may not return role_slug in the response, so preserve the plan value
-	// if it was set, since we know it was applied during creation.
-	if membership.RoleSlug != "" {
-		plan.RoleSlug = types.StringValue(membership.RoleSlug)
-	} else if !plan.RoleSlug.IsNull() && plan.RoleSlug.ValueString() != "" {
-		// Preserve plan value - API accepted it but didn't return it
+	if membership.Role.Slug != "" {
+		plan.RoleSlug = types.StringValue(membership.Role.Slug)
 	} else {
 		plan.RoleSlug = types.StringNull()
 	}
@@ -253,12 +249,8 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 	// Map response to state
 	state.UserID = types.StringValue(membership.UserID)
 	state.OrganizationID = types.StringValue(membership.OrganizationID)
-	// The API may not return role_slug in the response, so preserve the
-	// existing state value if the API returns empty.
-	if membership.RoleSlug != "" {
-		state.RoleSlug = types.StringValue(membership.RoleSlug)
-	} else if !state.RoleSlug.IsNull() && state.RoleSlug.ValueString() != "" {
-		// Preserve existing state value - API didn't return it but it was set
+	if membership.Role.Slug != "" {
+		state.RoleSlug = types.StringValue(membership.Role.Slug)
 	} else {
 		state.RoleSlug = types.StringNull()
 	}
@@ -270,10 +262,6 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 }
 
 func (r *OrganizationMembershipResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// Organization memberships cannot be updated - user_id and organization_id
-	// both require replacement. The only updatable field would be role_slug,
-	// but WorkOS API doesn't currently support updating membership roles directly.
-	// For now, we just read the current state.
 	var plan OrganizationMembershipResourceModel
 	var state OrganizationMembershipResourceModel
 
@@ -287,12 +275,19 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 		"id": state.ID.ValueString(),
 	})
 
-	// Read current state from API
-	membership, err := r.client.GetOrganizationMembership(ctx, state.ID.ValueString())
+	updateReq := &client.OrganizationMembershipUpdateRequest{}
+
+	if !plan.RoleSlug.Equal(state.RoleSlug) && !plan.RoleSlug.IsUnknown() {
+		if !plan.RoleSlug.IsNull() {
+			updateReq.RoleSlug = plan.RoleSlug.ValueString()
+		}
+	}
+
+	membership, err := r.client.UpdateOrganizationMembership(ctx, state.ID.ValueString(), updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Organization Membership",
-			"Could not read organization membership: "+err.Error(),
+			"Could not update organization membership: "+err.Error(),
 		)
 		return
 	}
@@ -301,8 +296,10 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 	plan.ID = state.ID
 	plan.UserID = types.StringValue(membership.UserID)
 	plan.OrganizationID = types.StringValue(membership.OrganizationID)
-	if membership.RoleSlug != "" {
-		plan.RoleSlug = types.StringValue(membership.RoleSlug)
+	if membership.Role.Slug != "" {
+		plan.RoleSlug = types.StringValue(membership.Role.Slug)
+	} else {
+		plan.RoleSlug = types.StringNull()
 	}
 	plan.Status = types.StringValue(membership.Status)
 	plan.CreatedAt = state.CreatedAt

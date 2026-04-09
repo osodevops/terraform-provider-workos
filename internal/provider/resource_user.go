@@ -285,10 +285,10 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 	if !plan.PasswordHashType.IsNull() {
 		createReq.PasswordHashType = plan.PasswordHashType.ValueString()
 	}
-	if !plan.ExternalID.IsNull() {
+	if !plan.ExternalID.IsNull() && !plan.ExternalID.IsUnknown() {
 		createReq.ExternalID = plan.ExternalID.ValueString()
 	}
-	if !plan.Metadata.IsNull() {
+	if !plan.Metadata.IsNull() && !plan.Metadata.IsUnknown() {
 		metadata := make(map[string]string)
 		resp.Diagnostics.Append(plan.Metadata.ElementsAs(ctx, &metadata, false)...)
 		if resp.Diagnostics.HasError() {
@@ -470,7 +470,7 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if !plan.ExternalID.Equal(state.ExternalID) {
 		updateReq.ExternalID = plan.ExternalID.ValueString()
 	}
-	if !plan.Metadata.Equal(state.Metadata) {
+	if !plan.Metadata.Equal(state.Metadata) && !plan.Metadata.IsUnknown() {
 		metadata := make(map[string]string)
 		resp.Diagnostics.Append(plan.Metadata.ElementsAs(ctx, &metadata, false)...)
 		if resp.Diagnostics.HasError() {

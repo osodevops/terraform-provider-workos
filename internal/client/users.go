@@ -124,6 +124,16 @@ func (c *Client) GetOrganizationMembership(ctx context.Context, id string) (*Org
 	return &membership, nil
 }
 
+// UpdateOrganizationMembership updates an organization membership by ID
+func (c *Client) UpdateOrganizationMembership(ctx context.Context, id string, req *OrganizationMembershipUpdateRequest) (*OrganizationMembership, error) {
+	var membership OrganizationMembership
+	err := c.Put(ctx, "/user_management/organization_memberships/"+id, req, &membership)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update organization membership: %w", err)
+	}
+	return &membership, nil
+}
+
 // DeleteOrganizationMembership deletes an organization membership by ID
 func (c *Client) DeleteOrganizationMembership(ctx context.Context, id string) error {
 	err := c.Delete(ctx, "/user_management/organization_memberships/"+id)
