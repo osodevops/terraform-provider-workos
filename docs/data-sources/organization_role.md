@@ -89,5 +89,6 @@ output "role_name_by_id" {
 - `description` (String) A description of the role.
 - `name` (String) The display name of the role.
 - `permissions` (List of String) The permissions associated with the role.
+- `resource_type_slug` (String) The resource type slug this role is scoped to.
 - `type` (String) The type of the role.
 - `updated_at` (String) The timestamp when the role was last updated (RFC3339 format).

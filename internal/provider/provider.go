@@ -173,11 +173,17 @@ func (p *WorkOSProvider) Configure(ctx context.Context, req provider.ConfigureRe
 func (p *WorkOSProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewOrganizationResource,
+		NewOrganizationDomainResource,
 		NewUserResource,
 		NewOrganizationMembershipResource,
+		NewGroupResource,
+		NewGroupMembershipResource,
+		NewConnectApplicationResource,
 		NewOrganizationRoleResource,
 		NewPermissionResource,
 		NewOrganizationRolePermissionResource,
+		NewAuthorizationResourceResource,
+		NewAuthorizationRoleAssignmentResource,
 	}
 }
 

@@ -141,7 +141,7 @@ data "workos_directory_user" "john" {
 
 func (d *DirectoryUserDataSource) ConfigValidators(ctx context.Context) []datasource.ConfigValidator {
 	return []datasource.ConfigValidator{
-		datasourcevalidator.AtLeastOneOf(
+		datasourcevalidator.ExactlyOneOf(
 			path.MatchRoot("id"),
 			path.MatchRoot("directory_id"),
 		),

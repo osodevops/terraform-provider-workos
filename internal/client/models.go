@@ -19,11 +19,11 @@ type Organization struct {
 
 // Domain represents a domain associated with an organization
 type Domain struct {
-	ID             string `json:"id"`
-	Object         string `json:"object"`
-	Domain         string `json:"domain"`
-	State          string `json:"state"`
-	OrganizationID string `json:"organization_id"`
+	ID               string `json:"id"`
+	Object           string `json:"object"`
+	Domain           string `json:"domain"`
+	State            string `json:"state"`
+	OrganizationID   string `json:"organization_id"`
 	VerificationType string `json:"verification_type,omitempty"`
 }
 
@@ -51,8 +51,8 @@ type OrganizationUpdateRequest struct {
 
 // OrganizationListResponse represents the response from listing organizations
 type OrganizationListResponse struct {
-	Data       []Organization `json:"data"`
-	ListMetadata ListMetadata `json:"list_metadata"`
+	Data         []Organization `json:"data"`
+	ListMetadata ListMetadata   `json:"list_metadata"`
 }
 
 // ListMetadata contains pagination information
@@ -63,26 +63,26 @@ type ListMetadata struct {
 
 // Connection represents a WorkOS SSO Connection
 type Connection struct {
-	ID               string           `json:"id"`
-	Object           string           `json:"object"`
-	OrganizationID   string           `json:"organization_id"`
-	ConnectionType   string           `json:"connection_type"`
-	Name             string           `json:"name"`
-	State            string           `json:"state"`
-	Status           string           `json:"status"`
+	ID                string             `json:"id"`
+	Object            string             `json:"object"`
+	OrganizationID    string             `json:"organization_id"`
+	ConnectionType    string             `json:"connection_type"`
+	Name              string             `json:"name"`
+	State             string             `json:"state"`
+	Status            string             `json:"status"`
 	SAMLConfiguration *SAMLConfiguration `json:"saml,omitempty"`
 	OIDCConfiguration *OIDCConfiguration `json:"oidc,omitempty"`
-	CreatedAt        time.Time        `json:"created_at"`
-	UpdatedAt        time.Time        `json:"updated_at"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
 }
 
 // SAMLConfiguration represents SAML-specific configuration
 type SAMLConfiguration struct {
-	IdPEntityID   string `json:"idp_entity_id"`
-	IdPSSOURL     string `json:"idp_sso_url"`
+	IdPEntityID    string `json:"idp_entity_id"`
+	IdPSSOURL      string `json:"idp_sso_url"`
 	IdPCertificate string `json:"idp_certificate"`
-	SPEntityID    string `json:"sp_entity_id"`
-	SPACSURL      string `json:"sp_acs_url"`
+	SPEntityID     string `json:"sp_entity_id"`
+	SPACSURL       string `json:"sp_acs_url"`
 }
 
 // OIDCConfiguration represents OIDC-specific configuration
@@ -109,20 +109,20 @@ type Directory struct {
 
 // DirectoryUser represents a user synced from a directory
 type DirectoryUser struct {
-	ID             string            `json:"id"`
-	Object         string            `json:"object"`
-	DirectoryID    string            `json:"directory_id"`
-	OrganizationID string            `json:"organization_id"`
-	IdpID          string            `json:"idp_id"`
-	FirstName      string            `json:"first_name"`
-	LastName       string            `json:"last_name"`
-	Email          string            `json:"email"`
-	Username       string            `json:"username,omitempty"`
-	State          string            `json:"state"`
+	ID               string                 `json:"id"`
+	Object           string                 `json:"object"`
+	DirectoryID      string                 `json:"directory_id"`
+	OrganizationID   string                 `json:"organization_id"`
+	IdpID            string                 `json:"idp_id"`
+	FirstName        string                 `json:"first_name"`
+	LastName         string                 `json:"last_name"`
+	Email            string                 `json:"email"`
+	Username         string                 `json:"username,omitempty"`
+	State            string                 `json:"state"`
 	CustomAttributes map[string]interface{} `json:"custom_attributes,omitempty"`
-	RawAttributes  map[string]interface{} `json:"raw_attributes,omitempty"`
-	CreatedAt      time.Time         `json:"created_at"`
-	UpdatedAt      time.Time         `json:"updated_at"`
+	RawAttributes    map[string]interface{} `json:"raw_attributes,omitempty"`
+	CreatedAt        time.Time              `json:"created_at"`
+	UpdatedAt        time.Time              `json:"updated_at"`
 }
 
 // DirectoryGroup represents a group synced from a directory
@@ -168,11 +168,11 @@ type UserCreateRequest struct {
 
 // UserUpdateRequest represents the request to update a user
 type UserUpdateRequest struct {
-	Email         string            `json:"email,omitempty"`
-	FirstName     string            `json:"first_name,omitempty"`
-	LastName      string            `json:"last_name,omitempty"`
-	EmailVerified *bool             `json:"email_verified,omitempty"`
-	ExternalID    string            `json:"external_id,omitempty"`
+	Email         string             `json:"email,omitempty"`
+	FirstName     string             `json:"first_name,omitempty"`
+	LastName      string             `json:"last_name,omitempty"`
+	EmailVerified *bool              `json:"email_verified,omitempty"`
+	ExternalID    string             `json:"external_id,omitempty"`
 	Metadata      map[string]*string `json:"metadata,omitempty"`
 }
 
@@ -183,46 +183,50 @@ type OrganizationMembershipRole struct {
 
 // OrganizationMembership represents a user's membership in an organization
 type OrganizationMembership struct {
-	ID             string                      `json:"id"`
-	Object         string                      `json:"object"`
-	UserID         string                      `json:"user_id"`
-	OrganizationID string                      `json:"organization_id"`
-	Role           OrganizationMembershipRole  `json:"role"`
-	Status         string                      `json:"status"`
-	CreatedAt      time.Time                   `json:"created_at"`
-	UpdatedAt      time.Time                   `json:"updated_at"`
+	ID             string                     `json:"id"`
+	Object         string                     `json:"object"`
+	UserID         string                     `json:"user_id"`
+	OrganizationID string                     `json:"organization_id"`
+	Role           OrganizationMembershipRole `json:"role"`
+	Status         string                     `json:"status"`
+	CreatedAt      time.Time                  `json:"created_at"`
+	UpdatedAt      time.Time                  `json:"updated_at"`
 }
 
 // OrganizationMembershipCreateRequest represents the request to create a membership
 type OrganizationMembershipCreateRequest struct {
-	UserID         string `json:"user_id"`
-	OrganizationID string `json:"organization_id"`
-	RoleSlug       string `json:"role_slug,omitempty"`
+	UserID         string   `json:"user_id"`
+	OrganizationID string   `json:"organization_id"`
+	RoleSlug       string   `json:"role_slug,omitempty"`
+	RoleSlugs      []string `json:"role_slugs,omitempty"`
 }
 
 // OrganizationMembershipUpdateRequest represents the request to update a membership
 type OrganizationMembershipUpdateRequest struct {
-	RoleSlug string `json:"role_slug,omitempty"`
+	RoleSlug  string   `json:"role_slug,omitempty"`
+	RoleSlugs []string `json:"role_slugs,omitempty"`
 }
 
 // OrganizationRole represents a WorkOS Organization Role
 type OrganizationRole struct {
-	ID          string    `json:"id"`
-	Object      string    `json:"object"`
-	Slug        string    `json:"slug"`
-	Name        string    `json:"name"`
-	Description string    `json:"description,omitempty"`
-	Type        string    `json:"type"`
-	Permissions []string  `json:"permissions"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID               string    `json:"id"`
+	Object           string    `json:"object"`
+	Slug             string    `json:"slug"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description,omitempty"`
+	Type             string    `json:"type"`
+	Permissions      []string  `json:"permissions"`
+	ResourceTypeSlug string    `json:"resource_type_slug,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // OrganizationRoleCreateRequest represents the request to create an organization role
 type OrganizationRoleCreateRequest struct {
-	Slug        string `json:"slug"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
+	Slug             string `json:"slug"`
+	Name             string `json:"name"`
+	Description      string `json:"description,omitempty"`
+	ResourceTypeSlug string `json:"resource_type_slug,omitempty"`
 }
 
 // OrganizationRoleUpdateRequest represents the request to update an organization role

@@ -123,7 +123,7 @@ data "workos_connection" "okta" {
 
 func (d *ConnectionDataSource) ConfigValidators(ctx context.Context) []datasource.ConfigValidator {
 	return []datasource.ConfigValidator{
-		datasourcevalidator.AtLeastOneOf(
+		datasourcevalidator.ExactlyOneOf(
 			path.MatchRoot("id"),
 			path.MatchRoot("organization_id"),
 		),

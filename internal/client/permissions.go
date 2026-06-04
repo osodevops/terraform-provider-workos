@@ -6,6 +6,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/url"
 )
 
 // CreatePermission creates a new permission
@@ -21,7 +22,7 @@ func (c *Client) CreatePermission(ctx context.Context, req *PermissionCreateRequ
 // GetPermission retrieves a permission by slug
 func (c *Client) GetPermission(ctx context.Context, slug string) (*Permission, error) {
 	var perm Permission
-	err := c.Get(ctx, fmt.Sprintf("/authorization/permissions/%s", slug), &perm)
+	err := c.Get(ctx, fmt.Sprintf("/authorization/permissions/%s", url.PathEscape(slug)), &perm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get permission: %w", err)
 	}
@@ -31,7 +32,7 @@ func (c *Client) GetPermission(ctx context.Context, slug string) (*Permission, e
 // UpdatePermission updates an existing permission
 func (c *Client) UpdatePermission(ctx context.Context, slug string, req *PermissionUpdateRequest) (*Permission, error) {
 	var perm Permission
-	err := c.Patch(ctx, fmt.Sprintf("/authorization/permissions/%s", slug), req, &perm)
+	err := c.Patch(ctx, fmt.Sprintf("/authorization/permissions/%s", url.PathEscape(slug)), req, &perm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update permission: %w", err)
 	}
@@ -40,7 +41,7 @@ func (c *Client) UpdatePermission(ctx context.Context, slug string, req *Permiss
 
 // DeletePermission deletes a permission by slug
 func (c *Client) DeletePermission(ctx context.Context, slug string) error {
-	err := c.Delete(ctx, fmt.Sprintf("/authorization/permissions/%s", slug))
+	err := c.Delete(ctx, fmt.Sprintf("/authorization/permissions/%s", url.PathEscape(slug)))
 	if err != nil {
 		return fmt.Errorf("failed to delete permission: %w", err)
 	}
