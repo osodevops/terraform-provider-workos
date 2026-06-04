@@ -32,15 +32,16 @@ type OrganizationRoleDataSource struct {
 
 // OrganizationRoleDataSourceModel describes the data source data model.
 type OrganizationRoleDataSourceModel struct {
-	ID             types.String `tfsdk:"id"`
-	OrganizationID types.String `tfsdk:"organization_id"`
-	Slug           types.String `tfsdk:"slug"`
-	Name           types.String `tfsdk:"name"`
-	Description    types.String `tfsdk:"description"`
-	Type           types.String `tfsdk:"type"`
-	Permissions    types.List   `tfsdk:"permissions"`
-	CreatedAt      types.String `tfsdk:"created_at"`
-	UpdatedAt      types.String `tfsdk:"updated_at"`
+	ID               types.String `tfsdk:"id"`
+	OrganizationID   types.String `tfsdk:"organization_id"`
+	Slug             types.String `tfsdk:"slug"`
+	Name             types.String `tfsdk:"name"`
+	Description      types.String `tfsdk:"description"`
+	Type             types.String `tfsdk:"type"`
+	ResourceTypeSlug types.String `tfsdk:"resource_type_slug"`
+	Permissions      types.List   `tfsdk:"permissions"`
+	CreatedAt        types.String `tfsdk:"created_at"`
+	UpdatedAt        types.String `tfsdk:"updated_at"`
 }
 
 func (d *OrganizationRoleDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -106,6 +107,11 @@ data "workos_organization_role" "example" {
 			"type": schema.StringAttribute{
 				Description:         "The type of the role.",
 				MarkdownDescription: "The type of the role.",
+				Computed:            true,
+			},
+			"resource_type_slug": schema.StringAttribute{
+				Description:         "The resource type slug this role is scoped to.",
+				MarkdownDescription: "The resource type slug this role is scoped to.",
 				Computed:            true,
 			},
 			"permissions": schema.ListAttribute{
@@ -208,6 +214,11 @@ func (d *OrganizationRoleDataSource) Read(ctx context.Context, req datasource.Re
 	config.Name = types.StringValue(role.Name)
 	config.Description = types.StringValue(role.Description)
 	config.Type = types.StringValue(role.Type)
+	if role.ResourceTypeSlug != "" {
+		config.ResourceTypeSlug = types.StringValue(role.ResourceTypeSlug)
+	} else {
+		config.ResourceTypeSlug = types.StringNull()
+	}
 	config.CreatedAt = types.StringValue(role.CreatedAt.Format(time.RFC3339))
 	config.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 

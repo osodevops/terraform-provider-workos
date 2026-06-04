@@ -30,7 +30,7 @@ type DirectoryGroupListResponse struct {
 // GetDirectory retrieves a directory by ID
 func (c *Client) GetDirectory(ctx context.Context, id string) (*Directory, error) {
 	var dir Directory
-	err := c.Get(ctx, "/directories/"+id, &dir)
+	err := c.Get(ctx, "/directories/"+url.PathEscape(id), &dir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get directory: %w", err)
 	}
@@ -39,7 +39,7 @@ func (c *Client) GetDirectory(ctx context.Context, id string) (*Directory, error
 
 // DeleteDirectory deletes a directory by ID
 func (c *Client) DeleteDirectory(ctx context.Context, id string) error {
-	err := c.Delete(ctx, "/directories/"+id)
+	err := c.Delete(ctx, "/directories/"+url.PathEscape(id))
 	if err != nil {
 		return fmt.Errorf("failed to delete directory: %w", err)
 	}
@@ -48,19 +48,29 @@ func (c *Client) DeleteDirectory(ctx context.Context, id string) error {
 
 // ListDirectories lists all directories, optionally filtered by organization
 func (c *Client) ListDirectories(ctx context.Context, organizationID string) (*DirectoryListResponse, error) {
-	path := "/directories"
+	var all DirectoryListResponse
+	params := url.Values{}
 	if organizationID != "" {
-		params := url.Values{}
 		params.Set("organization_id", organizationID)
-		path = path + "?" + params.Encode()
+	}
+	applyDefaultPagination(params)
+
+	for {
+		var page DirectoryListResponse
+		err := c.Get(ctx, pathWithQuery("/directories", params), &page)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list directories: %w", err)
+		}
+
+		all.Data = append(all.Data, page.Data...)
+		all.ListMetadata = page.ListMetadata
+		if page.ListMetadata.After == "" {
+			break
+		}
+		params.Set("after", page.ListMetadata.After)
 	}
 
-	var resp DirectoryListResponse
-	err := c.Get(ctx, path, &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list directories: %w", err)
-	}
-	return &resp, nil
+	return &all, nil
 }
 
 // GetDirectoryByOrganization finds a directory by organization ID
@@ -82,21 +92,40 @@ func (c *Client) GetDirectoryByOrganization(ctx context.Context, organizationID 
 
 // ListDirectoryUsers lists users in a directory
 func (c *Client) ListDirectoryUsers(ctx context.Context, directoryID string) (*DirectoryUserListResponse, error) {
+	return c.listDirectoryUsers(ctx, directoryID, "")
+}
+
+func (c *Client) listDirectoryUsers(ctx context.Context, directoryID, email string) (*DirectoryUserListResponse, error) {
+	var all DirectoryUserListResponse
 	params := url.Values{}
 	params.Set("directory", directoryID)
-
-	var resp DirectoryUserListResponse
-	err := c.Get(ctx, "/directory_users?"+params.Encode(), &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list directory users: %w", err)
+	if email != "" {
+		params.Set("emails", email)
 	}
-	return &resp, nil
+	applyDefaultPagination(params)
+
+	for {
+		var page DirectoryUserListResponse
+		err := c.Get(ctx, pathWithQuery("/directory_users", params), &page)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list directory users: %w", err)
+		}
+
+		all.Data = append(all.Data, page.Data...)
+		all.ListMetadata = page.ListMetadata
+		if page.ListMetadata.After == "" {
+			break
+		}
+		params.Set("after", page.ListMetadata.After)
+	}
+
+	return &all, nil
 }
 
 // GetDirectoryUser retrieves a directory user by ID
 func (c *Client) GetDirectoryUser(ctx context.Context, id string) (*DirectoryUser, error) {
 	var user DirectoryUser
-	err := c.Get(ctx, "/directory_users/"+id, &user)
+	err := c.Get(ctx, "/directory_users/"+url.PathEscape(id), &user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get directory user: %w", err)
 	}
@@ -105,12 +134,7 @@ func (c *Client) GetDirectoryUser(ctx context.Context, id string) (*DirectoryUse
 
 // GetDirectoryUserByEmail finds a directory user by email
 func (c *Client) GetDirectoryUserByEmail(ctx context.Context, directoryID, email string) (*DirectoryUser, error) {
-	params := url.Values{}
-	params.Set("directory", directoryID)
-	params.Set("emails", email)
-
-	var resp DirectoryUserListResponse
-	err := c.Get(ctx, "/directory_users?"+params.Encode(), &resp)
+	resp, err := c.listDirectoryUsers(ctx, directoryID, email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search directory users: %w", err)
 	}
@@ -127,21 +151,33 @@ func (c *Client) GetDirectoryUserByEmail(ctx context.Context, directoryID, email
 
 // ListDirectoryGroups lists groups in a directory
 func (c *Client) ListDirectoryGroups(ctx context.Context, directoryID string) (*DirectoryGroupListResponse, error) {
+	var all DirectoryGroupListResponse
 	params := url.Values{}
 	params.Set("directory", directoryID)
+	applyDefaultPagination(params)
 
-	var resp DirectoryGroupListResponse
-	err := c.Get(ctx, "/directory_groups?"+params.Encode(), &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list directory groups: %w", err)
+	for {
+		var page DirectoryGroupListResponse
+		err := c.Get(ctx, pathWithQuery("/directory_groups", params), &page)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list directory groups: %w", err)
+		}
+
+		all.Data = append(all.Data, page.Data...)
+		all.ListMetadata = page.ListMetadata
+		if page.ListMetadata.After == "" {
+			break
+		}
+		params.Set("after", page.ListMetadata.After)
 	}
-	return &resp, nil
+
+	return &all, nil
 }
 
 // GetDirectoryGroup retrieves a directory group by ID
 func (c *Client) GetDirectoryGroup(ctx context.Context, id string) (*DirectoryGroup, error) {
 	var group DirectoryGroup
-	err := c.Get(ctx, "/directory_groups/"+id, &group)
+	err := c.Get(ctx, "/directory_groups/"+url.PathEscape(id), &group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get directory group: %w", err)
 	}
@@ -150,11 +186,7 @@ func (c *Client) GetDirectoryGroup(ctx context.Context, id string) (*DirectoryGr
 
 // GetDirectoryGroupByName finds a directory group by name
 func (c *Client) GetDirectoryGroupByName(ctx context.Context, directoryID, name string) (*DirectoryGroup, error) {
-	params := url.Values{}
-	params.Set("directory", directoryID)
-
-	var resp DirectoryGroupListResponse
-	err := c.Get(ctx, "/directory_groups?"+params.Encode(), &resp)
+	resp, err := c.ListDirectoryGroups(ctx, directoryID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search directory groups: %w", err)
 	}

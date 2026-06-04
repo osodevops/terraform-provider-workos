@@ -35,15 +35,16 @@ type OrganizationRoleResource struct {
 
 // OrganizationRoleResourceModel describes the resource data model.
 type OrganizationRoleResourceModel struct {
-	ID             types.String `tfsdk:"id"`
-	OrganizationID types.String `tfsdk:"organization_id"`
-	Slug           types.String `tfsdk:"slug"`
-	Name           types.String `tfsdk:"name"`
-	Description    types.String `tfsdk:"description"`
-	Type           types.String `tfsdk:"type"`
-	Permissions    types.List   `tfsdk:"permissions"`
-	CreatedAt      types.String `tfsdk:"created_at"`
-	UpdatedAt      types.String `tfsdk:"updated_at"`
+	ID               types.String `tfsdk:"id"`
+	OrganizationID   types.String `tfsdk:"organization_id"`
+	Slug             types.String `tfsdk:"slug"`
+	Name             types.String `tfsdk:"name"`
+	Description      types.String `tfsdk:"description"`
+	Type             types.String `tfsdk:"type"`
+	ResourceTypeSlug types.String `tfsdk:"resource_type_slug"`
+	Permissions      types.List   `tfsdk:"permissions"`
+	CreatedAt        types.String `tfsdk:"created_at"`
+	UpdatedAt        types.String `tfsdk:"updated_at"`
 }
 
 func (r *OrganizationRoleResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -122,6 +123,16 @@ terraform import workos_organization_role.example org_01HXYZ.../org-billing-admi
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"resource_type_slug": schema.StringAttribute{
+				Description:         "The resource type slug this role is scoped to.",
+				MarkdownDescription: "The resource type slug this role is scoped to. Changing this value recreates the role.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"permissions": schema.ListAttribute{
 				Description:         "The permissions associated with the role.",
 				MarkdownDescription: "The permissions associated with the role.",
@@ -148,6 +159,7 @@ terraform import workos_organization_role.example org_01HXYZ.../org-billing-admi
 						configAttributes: []path.Path{
 							path.Root("name"),
 							path.Root("description"),
+							path.Root("resource_type_slug"),
 						},
 					},
 				},
@@ -200,6 +212,9 @@ func (r *OrganizationRoleResource) Create(ctx context.Context, req resource.Crea
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		createReq.Description = plan.Description.ValueString()
 	}
+	if !plan.ResourceTypeSlug.IsNull() && !plan.ResourceTypeSlug.IsUnknown() {
+		createReq.ResourceTypeSlug = plan.ResourceTypeSlug.ValueString()
+	}
 
 	// Create the organization role
 	role, err := r.client.CreateOrganizationRole(ctx, plan.OrganizationID.ValueString(), createReq)
@@ -215,6 +230,11 @@ func (r *OrganizationRoleResource) Create(ctx context.Context, req resource.Crea
 	plan.ID = types.StringValue(role.ID)
 	plan.Type = types.StringValue(role.Type)
 	plan.Description = types.StringValue(role.Description)
+	if role.ResourceTypeSlug != "" {
+		plan.ResourceTypeSlug = types.StringValue(role.ResourceTypeSlug)
+	} else {
+		plan.ResourceTypeSlug = types.StringNull()
+	}
 	plan.CreatedAt = types.StringValue(role.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 
@@ -280,6 +300,11 @@ func (r *OrganizationRoleResource) Read(ctx context.Context, req resource.ReadRe
 	state.Name = types.StringValue(role.Name)
 	state.Description = types.StringValue(role.Description)
 	state.Type = types.StringValue(role.Type)
+	if role.ResourceTypeSlug != "" {
+		state.ResourceTypeSlug = types.StringValue(role.ResourceTypeSlug)
+	} else {
+		state.ResourceTypeSlug = types.StringNull()
+	}
 	state.CreatedAt = types.StringValue(role.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 
@@ -323,6 +348,7 @@ func (r *OrganizationRoleResource) Update(ctx context.Context, req resource.Upda
 		plan.CreatedAt = state.CreatedAt
 		plan.UpdatedAt = state.UpdatedAt
 		plan.Type = state.Type
+		plan.ResourceTypeSlug = state.ResourceTypeSlug
 		plan.Permissions = state.Permissions
 		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		return
@@ -348,6 +374,7 @@ func (r *OrganizationRoleResource) Update(ctx context.Context, req resource.Upda
 	plan.ID = state.ID
 	plan.CreatedAt = state.CreatedAt
 	plan.Type = state.Type
+	plan.ResourceTypeSlug = state.ResourceTypeSlug
 	plan.Description = types.StringValue(role.Description)
 	plan.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 

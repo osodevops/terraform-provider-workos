@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -20,6 +22,7 @@ import (
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &OrganizationMembershipResource{}
+var _ resource.ResourceWithConfigValidators = &OrganizationMembershipResource{}
 var _ resource.ResourceWithImportState = &OrganizationMembershipResource{}
 
 func NewOrganizationMembershipResource() resource.Resource {
@@ -37,6 +40,7 @@ type OrganizationMembershipResourceModel struct {
 	UserID         types.String `tfsdk:"user_id"`
 	OrganizationID types.String `tfsdk:"organization_id"`
 	RoleSlug       types.String `tfsdk:"role_slug"`
+	RoleSlugs      types.List   `tfsdk:"role_slugs"`
 	Status         types.String `tfsdk:"status"`
 	CreatedAt      types.String `tfsdk:"created_at"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
@@ -115,6 +119,12 @@ terraform import workos_organization_membership.example om_01HXYZ...
 				Optional:            true,
 				Computed:            true,
 			},
+			"role_slugs": schema.ListAttribute{
+				Description:         "The slugs of multiple roles to assign to the user within the organization.",
+				MarkdownDescription: "The slugs of multiple roles to assign to the user within the organization. Use either `role_slug` or `role_slugs`, not both.",
+				Optional:            true,
+				ElementType:         types.StringType,
+			},
 			"status": schema.StringAttribute{
 				Description:         "The status of the membership.",
 				MarkdownDescription: "The status of the membership (`active`, `inactive`, `pending`).",
@@ -139,11 +149,21 @@ terraform import workos_organization_membership.example om_01HXYZ...
 					useStateForUnknownIfConfigUnchanged{
 						configAttributes: []path.Path{
 							path.Root("role_slug"),
+							path.Root("role_slugs"),
 						},
 					},
 				},
 			},
 		},
+	}
+}
+
+func (r *OrganizationMembershipResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		resourcevalidator.Conflicting(
+			path.MatchRoot("role_slug"),
+			path.MatchRoot("role_slugs"),
+		),
 	}
 }
 
@@ -182,7 +202,15 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 		OrganizationID: plan.OrganizationID.ValueString(),
 	}
 
-	if !plan.RoleSlug.IsNull() {
+	roleSlugs, diags := organizationMembershipRoleSlugs(ctx, plan.RoleSlugs)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if len(roleSlugs) > 0 {
+		createReq.RoleSlugs = roleSlugs
+	} else if !plan.RoleSlug.IsNull() && !plan.RoleSlug.IsUnknown() {
 		createReq.RoleSlug = plan.RoleSlug.ValueString()
 	}
 
@@ -199,15 +227,12 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	plan.ID = types.StringValue(membership.ID)
 	plan.UserID = types.StringValue(membership.UserID)
 	plan.OrganizationID = types.StringValue(membership.OrganizationID)
-	// The API may not return role_slug in the response, so preserve the plan value
-	// if it was set, since we know it was applied during creation.
-	if membership.RoleSlug != "" {
-		plan.RoleSlug = types.StringValue(membership.RoleSlug)
-	} else if !plan.RoleSlug.IsNull() && plan.RoleSlug.ValueString() != "" {
-		// Preserve plan value - API accepted it but didn't return it
+	if membership.Role.Slug != "" {
+		plan.RoleSlug = types.StringValue(membership.Role.Slug)
 	} else {
 		plan.RoleSlug = types.StringNull()
 	}
+	preserveOrganizationMembershipRoleSlugs(ctx, &plan, roleSlugs)
 	plan.Status = types.StringValue(membership.Status)
 	plan.CreatedAt = types.StringValue(membership.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(membership.UpdatedAt.Format(time.RFC3339))
@@ -253,15 +278,12 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 	// Map response to state
 	state.UserID = types.StringValue(membership.UserID)
 	state.OrganizationID = types.StringValue(membership.OrganizationID)
-	// The API may not return role_slug in the response, so preserve the
-	// existing state value if the API returns empty.
-	if membership.RoleSlug != "" {
-		state.RoleSlug = types.StringValue(membership.RoleSlug)
-	} else if !state.RoleSlug.IsNull() && state.RoleSlug.ValueString() != "" {
-		// Preserve existing state value - API didn't return it but it was set
+	if membership.Role.Slug != "" {
+		state.RoleSlug = types.StringValue(membership.Role.Slug)
 	} else {
 		state.RoleSlug = types.StringNull()
 	}
+	preserveOrganizationMembershipRoleSlugs(ctx, &state, nil)
 	state.Status = types.StringValue(membership.Status)
 	state.CreatedAt = types.StringValue(membership.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(membership.UpdatedAt.Format(time.RFC3339))
@@ -270,10 +292,6 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 }
 
 func (r *OrganizationMembershipResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// Organization memberships cannot be updated - user_id and organization_id
-	// both require replacement. The only updatable field would be role_slug,
-	// but WorkOS API doesn't currently support updating membership roles directly.
-	// For now, we just read the current state.
 	var plan OrganizationMembershipResourceModel
 	var state OrganizationMembershipResourceModel
 
@@ -287,12 +305,43 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 		"id": state.ID.ValueString(),
 	})
 
-	// Read current state from API
-	membership, err := r.client.GetOrganizationMembership(ctx, state.ID.ValueString())
+	updateReq := &client.OrganizationMembershipUpdateRequest{}
+	hasUpdate := false
+
+	planRoleSlugs, diags := organizationMembershipRoleSlugs(ctx, plan.RoleSlugs)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !plan.RoleSlugs.IsNull() && !plan.RoleSlugs.Equal(state.RoleSlugs) && !plan.RoleSlugs.IsUnknown() {
+		updateReq.RoleSlugs = planRoleSlugs
+		hasUpdate = true
+	} else if plan.RoleSlugs.IsNull() && !plan.RoleSlug.Equal(state.RoleSlug) && !plan.RoleSlug.IsUnknown() {
+		if !plan.RoleSlug.IsNull() {
+			updateReq.RoleSlug = plan.RoleSlug.ValueString()
+			hasUpdate = true
+		}
+	}
+
+	if !hasUpdate {
+		plan.ID = state.ID
+		plan.UserID = state.UserID
+		plan.OrganizationID = state.OrganizationID
+		plan.RoleSlug = state.RoleSlug
+		plan.RoleSlugs = state.RoleSlugs
+		plan.Status = state.Status
+		plan.CreatedAt = state.CreatedAt
+		plan.UpdatedAt = state.UpdatedAt
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		return
+	}
+
+	membership, err := r.client.UpdateOrganizationMembership(ctx, state.ID.ValueString(), updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Organization Membership",
-			"Could not read organization membership: "+err.Error(),
+			"Could not update organization membership: "+err.Error(),
 		)
 		return
 	}
@@ -301,9 +350,12 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 	plan.ID = state.ID
 	plan.UserID = types.StringValue(membership.UserID)
 	plan.OrganizationID = types.StringValue(membership.OrganizationID)
-	if membership.RoleSlug != "" {
-		plan.RoleSlug = types.StringValue(membership.RoleSlug)
+	if membership.Role.Slug != "" {
+		plan.RoleSlug = types.StringValue(membership.Role.Slug)
+	} else {
+		plan.RoleSlug = types.StringNull()
 	}
+	preserveOrganizationMembershipRoleSlugs(ctx, &plan, planRoleSlugs)
 	plan.Status = types.StringValue(membership.Status)
 	plan.CreatedAt = state.CreatedAt
 	plan.UpdatedAt = types.StringValue(membership.UpdatedAt.Format(time.RFC3339))
@@ -350,4 +402,28 @@ func (r *OrganizationMembershipResource) ImportState(ctx context.Context, req re
 	})
 
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func organizationMembershipRoleSlugs(ctx context.Context, value types.List) ([]string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if value.IsNull() || value.IsUnknown() {
+		return nil, diags
+	}
+
+	var roleSlugs []string
+	diags.Append(value.ElementsAs(ctx, &roleSlugs, false)...)
+	return roleSlugs, diags
+}
+
+func preserveOrganizationMembershipRoleSlugs(ctx context.Context, model *OrganizationMembershipResourceModel, roleSlugs []string) {
+	if len(roleSlugs) > 0 {
+		if model.RoleSlugs.IsNull() || model.RoleSlugs.IsUnknown() {
+			model.RoleSlugs, _ = types.ListValueFrom(ctx, types.StringType, roleSlugs)
+		}
+		return
+	}
+
+	if model.RoleSlugs.IsUnknown() {
+		model.RoleSlugs = types.ListNull(types.StringType)
+	}
 }

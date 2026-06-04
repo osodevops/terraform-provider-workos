@@ -87,6 +87,7 @@ output "billing_admin_role_type" {
 ### Optional
 
 - `description` (String) A description of the role.
+- `resource_type_slug` (String) The resource type slug this role is scoped to. Changing this value recreates the role.
 
 ### Read-Only
 

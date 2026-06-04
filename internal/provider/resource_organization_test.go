@@ -135,4 +135,3 @@ resource "workos_organization" "test" {
 }
 `, name, externalID, metadataKey, metadataValue)
 }
-

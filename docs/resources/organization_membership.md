@@ -138,6 +138,7 @@ output "membership_status" {
 ### Optional
 
 - `role_slug` (String) The slug of the role to assign to the user within the organization (e.g., `admin`, `member`).
+- `role_slugs` (List of String) The slugs of multiple roles to assign to the user within the organization. Use either `role_slug` or `role_slugs`, not both.
 
 ### Read-Only
 

@@ -34,7 +34,7 @@ func (c *Client) CreateUser(ctx context.Context, req *UserCreateRequest) (*User,
 // GetUser retrieves a user by ID
 func (c *Client) GetUser(ctx context.Context, id string) (*User, error) {
 	var user User
-	err := c.Get(ctx, "/user_management/users/"+id, &user)
+	err := c.Get(ctx, "/user_management/users/"+url.PathEscape(id), &user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -44,7 +44,7 @@ func (c *Client) GetUser(ctx context.Context, id string) (*User, error) {
 // UpdateUser updates an existing user
 func (c *Client) UpdateUser(ctx context.Context, id string, req *UserUpdateRequest) (*User, error) {
 	var user User
-	err := c.Put(ctx, "/user_management/users/"+id, req, &user)
+	err := c.Put(ctx, "/user_management/users/"+url.PathEscape(id), req, &user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
@@ -53,7 +53,7 @@ func (c *Client) UpdateUser(ctx context.Context, id string, req *UserUpdateReque
 
 // DeleteUser deletes a user by ID
 func (c *Client) DeleteUser(ctx context.Context, id string) error {
-	err := c.Delete(ctx, "/user_management/users/"+id)
+	err := c.Delete(ctx, "/user_management/users/"+url.PathEscape(id))
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
@@ -62,7 +62,7 @@ func (c *Client) DeleteUser(ctx context.Context, id string) error {
 
 // ListUsers lists all users with optional filters
 func (c *Client) ListUsers(ctx context.Context, email string, organizationID string) (*UserListResponse, error) {
-	path := "/user_management/users"
+	var all UserListResponse
 	params := url.Values{}
 	if email != "" {
 		params.Set("email", email)
@@ -70,22 +70,30 @@ func (c *Client) ListUsers(ctx context.Context, email string, organizationID str
 	if organizationID != "" {
 		params.Set("organization_id", organizationID)
 	}
-	if len(params) > 0 {
-		path += "?" + params.Encode()
+	applyDefaultPagination(params)
+
+	for {
+		var page UserListResponse
+		err := c.Get(ctx, pathWithQuery("/user_management/users", params), &page)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list users: %w", err)
+		}
+
+		all.Data = append(all.Data, page.Data...)
+		all.ListMetadata = page.ListMetadata
+		if page.ListMetadata.After == "" {
+			break
+		}
+		params.Set("after", page.ListMetadata.After)
 	}
 
-	var resp UserListResponse
-	err := c.Get(ctx, path, &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list users: %w", err)
-	}
-	return &resp, nil
+	return &all, nil
 }
 
 // GetUserByExternalID retrieves a user by external ID
 func (c *Client) GetUserByExternalID(ctx context.Context, externalID string) (*User, error) {
 	var user User
-	err := c.Get(ctx, "/user_management/users/external_id/"+externalID, &user)
+	err := c.Get(ctx, "/user_management/users/external_id/"+url.PathEscape(externalID), &user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user by external ID: %w", err)
 	}
@@ -117,16 +125,26 @@ func (c *Client) CreateOrganizationMembership(ctx context.Context, req *Organiza
 // GetOrganizationMembership retrieves an organization membership by ID
 func (c *Client) GetOrganizationMembership(ctx context.Context, id string) (*OrganizationMembership, error) {
 	var membership OrganizationMembership
-	err := c.Get(ctx, "/user_management/organization_memberships/"+id, &membership)
+	err := c.Get(ctx, "/user_management/organization_memberships/"+url.PathEscape(id), &membership)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization membership: %w", err)
 	}
 	return &membership, nil
 }
 
+// UpdateOrganizationMembership updates an organization membership by ID
+func (c *Client) UpdateOrganizationMembership(ctx context.Context, id string, req *OrganizationMembershipUpdateRequest) (*OrganizationMembership, error) {
+	var membership OrganizationMembership
+	err := c.Put(ctx, "/user_management/organization_memberships/"+url.PathEscape(id), req, &membership)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update organization membership: %w", err)
+	}
+	return &membership, nil
+}
+
 // DeleteOrganizationMembership deletes an organization membership by ID
 func (c *Client) DeleteOrganizationMembership(ctx context.Context, id string) error {
-	err := c.Delete(ctx, "/user_management/organization_memberships/"+id)
+	err := c.Delete(ctx, "/user_management/organization_memberships/"+url.PathEscape(id))
 	if err != nil {
 		return fmt.Errorf("failed to delete organization membership: %w", err)
 	}
@@ -135,7 +153,7 @@ func (c *Client) DeleteOrganizationMembership(ctx context.Context, id string) er
 
 // ListOrganizationMemberships lists memberships with optional filters
 func (c *Client) ListOrganizationMemberships(ctx context.Context, userID string, organizationID string) (*OrganizationMembershipListResponse, error) {
-	path := "/user_management/organization_memberships"
+	var all OrganizationMembershipListResponse
 	params := url.Values{}
 	if userID != "" {
 		params.Set("user_id", userID)
@@ -143,22 +161,30 @@ func (c *Client) ListOrganizationMemberships(ctx context.Context, userID string,
 	if organizationID != "" {
 		params.Set("organization_id", organizationID)
 	}
-	if len(params) > 0 {
-		path += "?" + params.Encode()
+	applyDefaultPagination(params)
+
+	for {
+		var page OrganizationMembershipListResponse
+		err := c.Get(ctx, pathWithQuery("/user_management/organization_memberships", params), &page)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list organization memberships: %w", err)
+		}
+
+		all.Data = append(all.Data, page.Data...)
+		all.ListMetadata = page.ListMetadata
+		if page.ListMetadata.After == "" {
+			break
+		}
+		params.Set("after", page.ListMetadata.After)
 	}
 
-	var resp OrganizationMembershipListResponse
-	err := c.Get(ctx, path, &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list organization memberships: %w", err)
-	}
-	return &resp, nil
+	return &all, nil
 }
 
 // DeactivateOrganizationMembership deactivates a membership
 func (c *Client) DeactivateOrganizationMembership(ctx context.Context, id string) (*OrganizationMembership, error) {
 	var membership OrganizationMembership
-	err := c.Put(ctx, "/user_management/organization_memberships/"+id+"/deactivate", nil, &membership)
+	err := c.Put(ctx, "/user_management/organization_memberships/"+url.PathEscape(id)+"/deactivate", nil, &membership)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deactivate organization membership: %w", err)
 	}
@@ -168,7 +194,7 @@ func (c *Client) DeactivateOrganizationMembership(ctx context.Context, id string
 // ReactivateOrganizationMembership reactivates a membership
 func (c *Client) ReactivateOrganizationMembership(ctx context.Context, id string) (*OrganizationMembership, error) {
 	var membership OrganizationMembership
-	err := c.Put(ctx, "/user_management/organization_memberships/"+id+"/reactivate", nil, &membership)
+	err := c.Put(ctx, "/user_management/organization_memberships/"+url.PathEscape(id)+"/reactivate", nil, &membership)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reactivate organization membership: %w", err)
 	}

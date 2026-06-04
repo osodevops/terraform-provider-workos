@@ -23,7 +23,7 @@ func (c *Client) CreateOrganization(ctx context.Context, req *OrganizationCreate
 // GetOrganization retrieves an organization by ID
 func (c *Client) GetOrganization(ctx context.Context, id string) (*Organization, error) {
 	var org Organization
-	err := c.Get(ctx, "/organizations/"+id, &org)
+	err := c.Get(ctx, "/organizations/"+url.PathEscape(id), &org)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization: %w", err)
 	}
@@ -33,7 +33,7 @@ func (c *Client) GetOrganization(ctx context.Context, id string) (*Organization,
 // UpdateOrganization updates an existing organization
 func (c *Client) UpdateOrganization(ctx context.Context, id string, req *OrganizationUpdateRequest) (*Organization, error) {
 	var org Organization
-	err := c.Put(ctx, "/organizations/"+id, req, &org)
+	err := c.Put(ctx, "/organizations/"+url.PathEscape(id), req, &org)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update organization: %w", err)
 	}
@@ -42,7 +42,7 @@ func (c *Client) UpdateOrganization(ctx context.Context, id string, req *Organiz
 
 // DeleteOrganization deletes an organization by ID
 func (c *Client) DeleteOrganization(ctx context.Context, id string) error {
-	err := c.Delete(ctx, "/organizations/"+id)
+	err := c.Delete(ctx, "/organizations/"+url.PathEscape(id))
 	if err != nil {
 		return fmt.Errorf("failed to delete organization: %w", err)
 	}
@@ -51,18 +51,32 @@ func (c *Client) DeleteOrganization(ctx context.Context, id string) error {
 
 // ListOrganizations lists all organizations
 func (c *Client) ListOrganizations(ctx context.Context) (*OrganizationListResponse, error) {
-	var resp OrganizationListResponse
-	err := c.Get(ctx, "/organizations", &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list organizations: %w", err)
+	var all OrganizationListResponse
+	params := url.Values{}
+	applyDefaultPagination(params)
+
+	for {
+		var page OrganizationListResponse
+		err := c.Get(ctx, pathWithQuery("/organizations", params), &page)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list organizations: %w", err)
+		}
+
+		all.Data = append(all.Data, page.Data...)
+		all.ListMetadata = page.ListMetadata
+		if page.ListMetadata.After == "" {
+			break
+		}
+		params.Set("after", page.ListMetadata.After)
 	}
-	return &resp, nil
+
+	return &all, nil
 }
 
 // GetOrganizationByExternalID retrieves an organization by external ID
 func (c *Client) GetOrganizationByExternalID(ctx context.Context, externalID string) (*Organization, error) {
 	var org Organization
-	err := c.Get(ctx, "/organizations/external_id/"+externalID, &org)
+	err := c.Get(ctx, "/organizations/external_id/"+url.PathEscape(externalID), &org)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization by external ID: %w", err)
 	}
@@ -71,16 +85,26 @@ func (c *Client) GetOrganizationByExternalID(ctx context.Context, externalID str
 
 // ListOrganizationsByDomain returns all organizations matching a given domain
 func (c *Client) ListOrganizationsByDomain(ctx context.Context, domain string) ([]Organization, error) {
+	var orgs []Organization
 	params := url.Values{}
 	params.Set("domains", domain)
+	applyDefaultPagination(params)
 
-	var resp OrganizationListResponse
-	err := c.Get(ctx, "/organizations?"+params.Encode(), &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search organizations by domain: %w", err)
+	for {
+		var page OrganizationListResponse
+		err := c.Get(ctx, pathWithQuery("/organizations", params), &page)
+		if err != nil {
+			return nil, fmt.Errorf("failed to search organizations by domain: %w", err)
+		}
+
+		orgs = append(orgs, page.Data...)
+		if page.ListMetadata.After == "" {
+			break
+		}
+		params.Set("after", page.ListMetadata.After)
 	}
 
-	return resp.Data, nil
+	return orgs, nil
 }
 
 // GetOrganizationByDomain finds a single organization by domain.

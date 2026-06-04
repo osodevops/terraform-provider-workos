@@ -285,10 +285,10 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 	if !plan.PasswordHashType.IsNull() {
 		createReq.PasswordHashType = plan.PasswordHashType.ValueString()
 	}
-	if !plan.ExternalID.IsNull() {
+	if !plan.ExternalID.IsNull() && !plan.ExternalID.IsUnknown() {
 		createReq.ExternalID = plan.ExternalID.ValueString()
 	}
-	if !plan.Metadata.IsNull() {
+	if !plan.Metadata.IsNull() && !plan.Metadata.IsUnknown() {
 		metadata := make(map[string]string)
 		resp.Diagnostics.Append(plan.Metadata.ElementsAs(ctx, &metadata, false)...)
 		if resp.Diagnostics.HasError() {
@@ -470,13 +470,31 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if !plan.ExternalID.Equal(state.ExternalID) {
 		updateReq.ExternalID = plan.ExternalID.ValueString()
 	}
-	if !plan.Metadata.Equal(state.Metadata) {
-		metadata := make(map[string]string)
-		resp.Diagnostics.Append(plan.Metadata.ElementsAs(ctx, &metadata, false)...)
+	if !plan.Metadata.Equal(state.Metadata) && !plan.Metadata.IsUnknown() {
+		newMetadata := make(map[string]string)
+		resp.Diagnostics.Append(plan.Metadata.ElementsAs(ctx, &newMetadata, false)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		updateReq.Metadata = metadata
+		// WorkOS merges metadata on update. To delete removed keys, send null.
+		updateMap := make(map[string]*string, len(newMetadata))
+		for k, v := range newMetadata {
+			v := v
+			updateMap[k] = &v
+		}
+		if !state.Metadata.IsNull() && !state.Metadata.IsUnknown() {
+			oldMetadata := make(map[string]string)
+			resp.Diagnostics.Append(state.Metadata.ElementsAs(ctx, &oldMetadata, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			for key := range oldMetadata {
+				if _, exists := newMetadata[key]; !exists {
+					updateMap[key] = nil
+				}
+			}
+		}
+		updateReq.Metadata = updateMap
 	}
 
 	user, err := r.client.UpdateUser(ctx, state.ID.ValueString(), updateReq)
