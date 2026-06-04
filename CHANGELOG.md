@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1](https://github.com/osodevops/terraform-provider-workos/compare/v2.3.0...v2.3.1) (2026-06-04)
+
+
+### Bug Fixes
+
+* align Terraform Registry release assets ([139697b](https://github.com/osodevops/terraform-provider-workos/commit/139697baf1b2c37f14cbe11f1b26d4e013dba31e))
+* include registry manifest in release checksums ([80437d6](https://github.com/osodevops/terraform-provider-workos/commit/80437d6cd93d022337195c49d01ae8deb07132c5))
+
 ## [2.3.0](https://github.com/osodevops/terraform-provider-workos/compare/v2.2.1...v2.3.0) (2026-06-04)
 
 
