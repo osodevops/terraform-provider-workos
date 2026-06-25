@@ -241,6 +241,45 @@ type OrganizationRoleListResponse struct {
 	ListMetadata ListMetadata       `json:"list_metadata"`
 }
 
+// EnvironmentRole represents a WorkOS environment-level role.
+type EnvironmentRole struct {
+	ID               string    `json:"id"`
+	Object           string    `json:"object"`
+	Slug             string    `json:"slug"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description,omitempty"`
+	Type             string    `json:"type"`
+	Permissions      []string  `json:"permissions"`
+	ResourceTypeSlug string    `json:"resource_type_slug,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// EnvironmentRoleCreateRequest represents the request to create an environment role.
+type EnvironmentRoleCreateRequest struct {
+	Slug             string `json:"slug"`
+	Name             string `json:"name"`
+	Description      string `json:"description,omitempty"`
+	ResourceTypeSlug string `json:"resource_type_slug,omitempty"`
+}
+
+// EnvironmentRoleUpdateRequest represents the request to update an environment role.
+type EnvironmentRoleUpdateRequest struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// EnvironmentRoleListResponse represents the response from listing environment roles.
+type EnvironmentRoleListResponse struct {
+	Data         []EnvironmentRole `json:"data"`
+	ListMetadata ListMetadata      `json:"list_metadata"`
+}
+
+// EnvironmentRolePermissionsRequest represents the request to replace environment role permissions.
+type EnvironmentRolePermissionsRequest struct {
+	Permissions []string `json:"permissions"`
+}
+
 // Permission represents a WorkOS Permission
 type Permission struct {
 	ID               string    `json:"id"`

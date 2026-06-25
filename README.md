@@ -93,6 +93,17 @@ resource "workos_organization_membership" "admin" {
 ### Managing Roles
 
 ```hcl
+resource "workos_environment_role" "billing_admin" {
+  slug        = "billing-admin"
+  name        = "Billing Admin"
+  description = "Can manage billing across organizations"
+
+  permissions = [
+    workos_permission.billing_read.slug,
+    workos_permission.billing_write.slug,
+  ]
+}
+
 resource "workos_organization_role" "billing_admin" {
   organization_id = workos_organization.example.id
   slug            = "org-billing-admin"
@@ -173,11 +184,30 @@ data "workos_organization_role" "billing" {
   slug            = "org-billing-admin"
 }
 
+# Look up environment role by slug
+data "workos_environment_role" "admin" {
+  slug = "admin"
+}
+
 # Look up permission by slug
 data "workos_permission" "billing_read" {
   slug = "billing:read"
 }
 ```
+
+### Importing Existing Resources
+
+The provider does not automatically discover and adopt existing WorkOS objects. Import existing resources into Terraform or OpenTofu state before managing them in configuration.
+
+```bash
+terraform import workos_organization.example org_01HXYZ...
+terraform import workos_permission.billing_read billing:read
+terraform import workos_environment_role.admin admin
+terraform import workos_organization_role.billing_admin org_01HXYZ.../org-billing-admin
+terraform import workos_organization_role_permission.billing_admin_read org_01HXYZ.../org-billing-admin/billing:read
+```
+
+OpenTofu uses the same import IDs with `tofu import`.
 
 ## Resources
 
@@ -186,6 +216,7 @@ data "workos_permission" "billing_read" {
 | `workos_organization` | Manages WorkOS organizations |
 | `workos_user` | Manages AuthKit users |
 | `workos_organization_membership` | Manages user-organization memberships |
+| `workos_environment_role` | Manages environment-level authorization roles |
 | `workos_organization_role` | Manages organization authorization roles |
 | `workos_permission` | Manages environment-level permissions |
 | `workos_organization_role_permission` | Assigns a permission to an organization role |
@@ -200,6 +231,7 @@ data "workos_permission" "billing_read" {
 | `workos_directory_user` | Retrieves directory-synced user |
 | `workos_directory_group` | Retrieves directory-synced group |
 | `workos_user` | Retrieves AuthKit user by ID, email, or external ID |
+| `workos_environment_role` | Retrieves environment-level role by slug or ID |
 | `workos_organization_role` | Retrieves organization role by slug or ID |
 | `workos_permission` | Retrieves permission by slug |
 

@@ -179,6 +179,7 @@ func (p *WorkOSProvider) Resources(ctx context.Context) []func() resource.Resour
 		NewGroupResource,
 		NewGroupMembershipResource,
 		NewConnectApplicationResource,
+		NewEnvironmentRoleResource,
 		NewOrganizationRoleResource,
 		NewPermissionResource,
 		NewOrganizationRolePermissionResource,
@@ -195,6 +196,7 @@ func (p *WorkOSProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewDirectoryUserDataSource,
 		NewDirectoryGroupDataSource,
 		NewUserDataSource,
+		NewEnvironmentRoleDataSource,
 		NewOrganizationRoleDataSource,
 		NewPermissionDataSource,
 	}
