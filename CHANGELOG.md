@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0](https://github.com/osodevops/terraform-provider-workos/compare/v2.3.1...v2.4.0) (2026-06-25)
+
+
+### Features
+
+* add WorkOS environment role support ([2f9a854](https://github.com/osodevops/terraform-provider-workos/commit/2f9a85424f55f82940e6e899b88b5ed469e7413b))
+* add WorkOS environment role support ([068d22b](https://github.com/osodevops/terraform-provider-workos/commit/068d22be0370a44c9f1bb134f4f4bfa9bff1a41d))
+
 ## [Unreleased]
 
 ### Features
