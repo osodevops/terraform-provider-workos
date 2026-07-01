@@ -11,13 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 * add WorkOS environment role support ([2f9a854](https://github.com/osodevops/terraform-provider-workos/commit/2f9a85424f55f82940e6e899b88b5ed469e7413b))
-* add WorkOS environment role support ([068d22b](https://github.com/osodevops/terraform-provider-workos/commit/068d22be0370a44c9f1bb134f4f4bfa9bff1a41d))
-
-## [Unreleased]
-
-### Features
-
-* add environment role resource and data source for WorkOS Authorization roles
 
 ## [2.3.1](https://github.com/osodevops/terraform-provider-workos/compare/v2.3.0...v2.3.1) (2026-06-04)
 
