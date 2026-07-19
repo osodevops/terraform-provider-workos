@@ -91,17 +91,37 @@ func TestAccOrganizationRoleResource_Concurrent(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccOrganizationRoleResourceConcurrentConfig(orgName, slugPrefix),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("workos_organization_role.concurrent[\"admin\"]", "name", "Admin"),
-					resource.TestCheckResourceAttr("workos_organization_role.concurrent[\"editor\"]", "name", "Editor"),
-					resource.TestCheckResourceAttr("workos_organization_role.concurrent[\"viewer\"]", "name", "Viewer"),
-					resource.TestCheckResourceAttrSet("workos_organization_role.concurrent[\"admin\"]", "id"),
-					resource.TestCheckResourceAttrSet("workos_organization_role.concurrent[\"editor\"]", "id"),
-					resource.TestCheckResourceAttrSet("workos_organization_role.concurrent[\"viewer\"]", "id"),
-				),
+				Check:  testCheckConcurrentOrganizationRoles,
 			},
 		},
 	})
+}
+
+func testCheckConcurrentOrganizationRoles(state *terraform.State) error {
+	expectedRoles := []struct {
+		key  string
+		name string
+	}{
+		{key: "admin", name: "Admin"},
+		{key: "editor", name: "Editor"},
+		{key: "viewer", name: "Viewer"},
+	}
+
+	for _, expected := range expectedRoles {
+		address := fmt.Sprintf(`workos_organization_role.concurrent[%q]`, expected.key)
+		role, ok := state.RootModule().Resources[address]
+		if !ok {
+			return fmt.Errorf("resource not found in state: %s", address)
+		}
+		if got := role.Primary.Attributes["name"]; got != expected.name {
+			return fmt.Errorf("expected %s name to be %q, got %q", address, expected.name, got)
+		}
+		if role.Primary.Attributes["id"] == "" {
+			return fmt.Errorf("expected %s id to be set", address)
+		}
+	}
+
+	return nil
 }
 
 func testAccOrganizationRoleResourceConfig(orgName, slug, name, description string) string {
