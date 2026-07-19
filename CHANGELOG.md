@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 * serialize organization role mutations ([2313bb7](https://github.com/osodevops/terraform-provider-workos/commit/2313bb74e03e37934acb5fe9e69a87adeba91389))
-* serialize organization role mutations ([3b06f2e](https://github.com/osodevops/terraform-provider-workos/commit/3b06f2ee2518380165901d617964b523271181c3))
 
 ## [2.4.0](https://github.com/osodevops/terraform-provider-workos/compare/v2.3.1...v2.4.0) (2026-06-25)
 
