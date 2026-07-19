@@ -11,8 +11,14 @@ import (
 
 // CreateOrganizationRole creates a new organization role
 func (c *Client) CreateOrganizationRole(ctx context.Context, orgID string, req *OrganizationRoleCreateRequest) (*OrganizationRole, error) {
+	unlock, err := c.organizationRoleMutations.lock(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create organization role: %w", err)
+	}
+	defer unlock()
+
 	var role OrganizationRole
-	err := c.Post(ctx, fmt.Sprintf("/authorization/organizations/%s/roles", url.PathEscape(orgID)), req, &role)
+	err = c.Post(ctx, fmt.Sprintf("/authorization/organizations/%s/roles", url.PathEscape(orgID)), req, &role)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create organization role: %w", err)
 	}
@@ -31,8 +37,14 @@ func (c *Client) GetOrganizationRole(ctx context.Context, orgID, slug string) (*
 
 // UpdateOrganizationRole updates an existing organization role
 func (c *Client) UpdateOrganizationRole(ctx context.Context, orgID, slug string, req *OrganizationRoleUpdateRequest) (*OrganizationRole, error) {
+	unlock, err := c.organizationRoleMutations.lock(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update organization role: %w", err)
+	}
+	defer unlock()
+
 	var role OrganizationRole
-	err := c.Patch(ctx, fmt.Sprintf("/authorization/organizations/%s/roles/%s", url.PathEscape(orgID), url.PathEscape(slug)), req, &role)
+	err = c.Patch(ctx, fmt.Sprintf("/authorization/organizations/%s/roles/%s", url.PathEscape(orgID), url.PathEscape(slug)), req, &role)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update organization role: %w", err)
 	}
@@ -41,7 +53,13 @@ func (c *Client) UpdateOrganizationRole(ctx context.Context, orgID, slug string,
 
 // DeleteOrganizationRole deletes an organization role by slug
 func (c *Client) DeleteOrganizationRole(ctx context.Context, orgID, slug string) error {
-	err := c.Delete(ctx, fmt.Sprintf("/authorization/organizations/%s/roles/%s", url.PathEscape(orgID), url.PathEscape(slug)))
+	unlock, err := c.organizationRoleMutations.lock(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("failed to delete organization role: %w", err)
+	}
+	defer unlock()
+
+	err = c.Delete(ctx, fmt.Sprintf("/authorization/organizations/%s/roles/%s", url.PathEscape(orgID), url.PathEscape(slug)))
 	if err != nil {
 		return fmt.Errorf("failed to delete organization role: %w", err)
 	}

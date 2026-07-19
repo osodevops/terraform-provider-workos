@@ -81,6 +81,29 @@ func TestAccOrganizationRoleResource_NoDescription(t *testing.T) {
 	})
 }
 
+func TestAccOrganizationRoleResource_Concurrent(t *testing.T) {
+	orgName := fmt.Sprintf("tf-acc-test-concurrent-%d", time.Now().UnixNano())
+	slugPrefix := fmt.Sprintf("org-tf-concurrent-%x", time.Now().UnixNano())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccOrganizationRoleResourceConcurrentConfig(orgName, slugPrefix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("workos_organization_role.concurrent[\"admin\"]", "name", "Admin"),
+					resource.TestCheckResourceAttr("workos_organization_role.concurrent[\"editor\"]", "name", "Editor"),
+					resource.TestCheckResourceAttr("workos_organization_role.concurrent[\"viewer\"]", "name", "Viewer"),
+					resource.TestCheckResourceAttrSet("workos_organization_role.concurrent[\"admin\"]", "id"),
+					resource.TestCheckResourceAttrSet("workos_organization_role.concurrent[\"editor\"]", "id"),
+					resource.TestCheckResourceAttrSet("workos_organization_role.concurrent[\"viewer\"]", "id"),
+				),
+			},
+		},
+	})
+}
+
 func testAccOrganizationRoleResourceConfig(orgName, slug, name, description string) string {
 	return fmt.Sprintf(`
 resource "workos_organization" "test" {
@@ -108,4 +131,33 @@ resource "workos_organization_role" "test" {
   name            = %[3]q
 }
 `, orgName, slug, name)
+}
+
+func testAccOrganizationRoleResourceConcurrentConfig(orgName, slugPrefix string) string {
+	return fmt.Sprintf(`
+resource "workos_organization" "concurrent" {
+  name = %[1]q
+}
+
+resource "workos_organization_role" "concurrent" {
+  for_each = {
+    admin = {
+      slug = "%[2]s-admin"
+      name = "Admin"
+    }
+    editor = {
+      slug = "%[2]s-editor"
+      name = "Editor"
+    }
+    viewer = {
+      slug = "%[2]s-viewer"
+      name = "Viewer"
+    }
+  }
+
+  organization_id = workos_organization.concurrent.id
+  slug            = each.value.slug
+  name            = each.value.name
+}
+`, orgName, slugPrefix)
 }
