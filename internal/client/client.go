@@ -39,6 +39,10 @@ type Client struct {
 	apiKey     string
 	clientID   string
 	baseURL    string
+
+	// Organization role mutations update a priority list shared by every role
+	// in the organization, so concurrent requests must be coordinated.
+	organizationRoleMutations keyedLock
 }
 
 // NewClient creates a new WorkOS API client
