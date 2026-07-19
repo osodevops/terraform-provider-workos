@@ -91,37 +91,17 @@ func TestAccOrganizationRoleResource_Concurrent(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccOrganizationRoleResourceConcurrentConfig(orgName, slugPrefix),
-				Check:  testCheckConcurrentOrganizationRoles,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("workos_organization_role.concurrent_admin", "name", "Admin"),
+					resource.TestCheckResourceAttr("workos_organization_role.concurrent_editor", "name", "Editor"),
+					resource.TestCheckResourceAttr("workos_organization_role.concurrent_viewer", "name", "Viewer"),
+					resource.TestCheckResourceAttrSet("workos_organization_role.concurrent_admin", "id"),
+					resource.TestCheckResourceAttrSet("workos_organization_role.concurrent_editor", "id"),
+					resource.TestCheckResourceAttrSet("workos_organization_role.concurrent_viewer", "id"),
+				),
 			},
 		},
 	})
-}
-
-func testCheckConcurrentOrganizationRoles(state *terraform.State) error {
-	expectedRoles := []struct {
-		key  string
-		name string
-	}{
-		{key: "admin", name: "Admin"},
-		{key: "editor", name: "Editor"},
-		{key: "viewer", name: "Viewer"},
-	}
-
-	for _, expected := range expectedRoles {
-		address := fmt.Sprintf(`workos_organization_role.concurrent[%q]`, expected.key)
-		role, ok := state.RootModule().Resources[address]
-		if !ok {
-			return fmt.Errorf("resource not found in state: %s", address)
-		}
-		if got := role.Primary.Attributes["name"]; got != expected.name {
-			return fmt.Errorf("expected %s name to be %q, got %q", address, expected.name, got)
-		}
-		if role.Primary.Attributes["id"] == "" {
-			return fmt.Errorf("expected %s id to be set", address)
-		}
-	}
-
-	return nil
 }
 
 func testAccOrganizationRoleResourceConfig(orgName, slug, name, description string) string {
@@ -159,25 +139,22 @@ resource "workos_organization" "concurrent" {
   name = %[1]q
 }
 
-resource "workos_organization_role" "concurrent" {
-  for_each = {
-    admin = {
-      slug = "%[2]s-admin"
-      name = "Admin"
-    }
-    editor = {
-      slug = "%[2]s-editor"
-      name = "Editor"
-    }
-    viewer = {
-      slug = "%[2]s-viewer"
-      name = "Viewer"
-    }
-  }
-
+resource "workos_organization_role" "concurrent_admin" {
   organization_id = workos_organization.concurrent.id
-  slug            = each.value.slug
-  name            = each.value.name
+  slug            = "%[2]s-admin"
+  name            = "Admin"
+}
+
+resource "workos_organization_role" "concurrent_editor" {
+  organization_id = workos_organization.concurrent.id
+  slug            = "%[2]s-editor"
+  name            = "Editor"
+}
+
+resource "workos_organization_role" "concurrent_viewer" {
+  organization_id = workos_organization.concurrent.id
+  slug            = "%[2]s-viewer"
+  name            = "Viewer"
 }
 `, orgName, slugPrefix)
 }
