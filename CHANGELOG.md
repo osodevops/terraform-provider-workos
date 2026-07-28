@@ -10,8 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-* handle unknown values in connect application plans ([cda6a96](https://github.com/osodevops/terraform-provider-workos/commit/cda6a96d11a54c47e027742ea2dd201acfb415e4))
-* handle unknown values in connect application plans ([2e5d6e4](https://github.com/osodevops/terraform-provider-workos/commit/2e5d6e4d02e300d53dbf5f0146b69b6cdc91c336)), closes [#34](https://github.com/osodevops/terraform-provider-workos/issues/34)
+* handle unknown values in connect application plans ([cda6a96](https://github.com/osodevops/terraform-provider-workos/commit/cda6a96d11a54c47e027742ea2dd201acfb415e4)), closes [#34](https://github.com/osodevops/terraform-provider-workos/issues/34)
 
 ## [2.4.1](https://github.com/osodevops/terraform-provider-workos/compare/v2.4.0...v2.4.1) (2026-07-19)
 
