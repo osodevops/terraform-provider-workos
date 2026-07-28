@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -29,25 +30,40 @@ type ConnectApplicationResource struct {
 	client *client.Client
 }
 
+// ConnectApplicationResourceModel mirrors the resource schema. Every attribute
+// uses a `types` value because Terraform sends unknown values for computed and
+// optional+computed attributes during Create, and only the framework types can
+// represent an unknown.
 type ConnectApplicationResourceModel struct {
-	ID                       types.String                         `tfsdk:"id"`
-	ClientID                 types.String                         `tfsdk:"client_id"`
-	Name                     types.String                         `tfsdk:"name"`
-	Description              types.String                         `tfsdk:"description"`
-	ApplicationType          types.String                         `tfsdk:"application_type"`
-	OrganizationID           types.String                         `tfsdk:"organization_id"`
-	IsFirstParty             types.Bool                           `tfsdk:"is_first_party"`
-	UsesPKCE                 types.Bool                           `tfsdk:"uses_pkce"`
-	WasDynamicallyRegistered types.Bool                           `tfsdk:"was_dynamically_registered"`
-	Scopes                   types.List                           `tfsdk:"scopes"`
-	RedirectURIs             []ConnectApplicationRedirectURIModel `tfsdk:"redirect_uris"`
-	CreatedAt                types.String                         `tfsdk:"created_at"`
-	UpdatedAt                types.String                         `tfsdk:"updated_at"`
+	ID                       types.String `tfsdk:"id"`
+	ClientID                 types.String `tfsdk:"client_id"`
+	Name                     types.String `tfsdk:"name"`
+	Description              types.String `tfsdk:"description"`
+	ApplicationType          types.String `tfsdk:"application_type"`
+	OrganizationID           types.String `tfsdk:"organization_id"`
+	IsFirstParty             types.Bool   `tfsdk:"is_first_party"`
+	UsesPKCE                 types.Bool   `tfsdk:"uses_pkce"`
+	WasDynamicallyRegistered types.Bool   `tfsdk:"was_dynamically_registered"`
+	Scopes                   types.List   `tfsdk:"scopes"`
+	RedirectURIs             types.List   `tfsdk:"redirect_uris"`
+	CreatedAt                types.String `tfsdk:"created_at"`
+	UpdatedAt                types.String `tfsdk:"updated_at"`
 }
 
 type ConnectApplicationRedirectURIModel struct {
 	URI     types.String `tfsdk:"uri"`
 	Default types.Bool   `tfsdk:"default"`
+}
+
+// connectApplicationRedirectURIAttrTypes describes a single redirect_uris
+// element and must stay in sync with the nested object in the schema.
+var connectApplicationRedirectURIAttrTypes = map[string]attr.Type{
+	"uri":     types.StringType,
+	"default": types.BoolType,
+}
+
+func connectApplicationRedirectURIObjectType() types.ObjectType {
+	return types.ObjectType{AttrTypes: connectApplicationRedirectURIAttrTypes}
 }
 
 func (r *ConnectApplicationResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -181,7 +197,14 @@ func (r *ConnectApplicationResource) Create(ctx context.Context, req resource.Cr
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if !validateConnectApplicationPlan(&plan, &resp.Diagnostics) {
+
+	redirectURIs, diags := redirectURIsFromTerraform(ctx, plan.RedirectURIs)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !validateConnectApplicationPlan(&plan, redirectURIs, &resp.Diagnostics) {
 		return
 	}
 
@@ -195,7 +218,7 @@ func (r *ConnectApplicationResource) Create(ctx context.Context, req resource.Cr
 		ApplicationType: plan.ApplicationType.ValueString(),
 		Name:            plan.Name.ValueString(),
 		Scopes:          scopes,
-		RedirectURIs:    redirectURIInputs(plan.RedirectURIs),
+		RedirectURIs:    redirectURIInputs(redirectURIs),
 	}
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		createReq.Description = plan.Description.ValueString()
@@ -260,7 +283,14 @@ func (r *ConnectApplicationResource) Update(ctx context.Context, req resource.Up
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if !validateConnectApplicationPlan(&plan, &resp.Diagnostics) {
+
+	redirectURIs, diags := redirectURIsFromTerraform(ctx, plan.RedirectURIs)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !validateConnectApplicationPlan(&plan, redirectURIs, &resp.Diagnostics) {
 		return
 	}
 
@@ -273,7 +303,7 @@ func (r *ConnectApplicationResource) Update(ctx context.Context, req resource.Up
 	updateReq := &client.ConnectApplicationUpdateRequest{
 		Name:         plan.Name.ValueString(),
 		Scopes:       scopes,
-		RedirectURIs: redirectURIInputs(plan.RedirectURIs),
+		RedirectURIs: redirectURIInputs(redirectURIs),
 	}
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		updateReq.Description = plan.Description.ValueString()
@@ -313,7 +343,7 @@ func (r *ConnectApplicationResource) ImportState(ctx context.Context, req resour
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func validateConnectApplicationPlan(plan *ConnectApplicationResourceModel, diags *diag.Diagnostics) bool {
+func validateConnectApplicationPlan(plan *ConnectApplicationResourceModel, redirectURIs []ConnectApplicationRedirectURIModel, diags *diag.Diagnostics) bool {
 	applicationType := plan.ApplicationType.ValueString()
 	if applicationType != "oauth" && applicationType != "m2m" {
 		diags.AddAttributeError(path.Root("application_type"), "Invalid Application Type", "application_type must be either 'oauth' or 'm2m'.")
@@ -325,7 +355,7 @@ func validateConnectApplicationPlan(plan *ConnectApplicationResourceModel, diags
 		return false
 	}
 
-	if applicationType == "m2m" && len(plan.RedirectURIs) > 0 {
+	if applicationType == "m2m" && len(redirectURIs) > 0 {
 		diags.AddAttributeError(path.Root("redirect_uris"), "Unsupported Redirect URIs", "redirect_uris can only be configured for oauth Connect applications.")
 		return false
 	}
@@ -352,6 +382,21 @@ func stringListFromTerraform(ctx context.Context, value types.List) ([]string, d
 	return values, diags
 }
 
+// redirectURIsFromTerraform converts the redirect_uris list into Go models.
+// A null or unknown list means "not configured" — redirect_uris is
+// optional+computed, so Terraform sends it as unknown during Create whenever the
+// practitioner leaves it out.
+func redirectURIsFromTerraform(ctx context.Context, value types.List) ([]ConnectApplicationRedirectURIModel, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if value.IsNull() || value.IsUnknown() {
+		return nil, diags
+	}
+
+	var values []ConnectApplicationRedirectURIModel
+	diags.Append(value.ElementsAs(ctx, &values, false)...)
+	return values, diags
+}
+
 func redirectURIInputs(values []ConnectApplicationRedirectURIModel) []client.ConnectApplicationRedirectURIInput {
 	if len(values) == 0 {
 		return nil
@@ -371,31 +416,42 @@ func redirectURIInputs(values []ConnectApplicationRedirectURIModel) []client.Con
 	return inputs
 }
 
+// connectApplicationToState writes an API response over the plan (Create and
+// Update) or the prior state (Read). Every attribute must end up known:
+// leaving an unknown behind makes Terraform fail the apply.
 func connectApplicationToState(ctx context.Context, state *ConnectApplicationResourceModel, app *client.ConnectApplication, diags *diag.Diagnostics) {
 	state.ID = types.StringValue(app.ID)
 	state.ClientID = types.StringValue(app.ClientID)
 	state.Name = types.StringValue(app.Name)
-	state.Description = optionalString(app.Description)
-	state.ApplicationType = optionalString(app.ApplicationType)
-	state.OrganizationID = optionalString(app.OrganizationID)
-	state.IsFirstParty = optionalBool(app.IsFirstParty)
-	state.UsesPKCE = optionalBool(app.UsesPKCE)
+	state.Description = optionalStringOrCurrent(app.Description, state.Description)
+	state.ApplicationType = optionalStringOrCurrent(app.ApplicationType, state.ApplicationType)
+	state.OrganizationID = optionalStringOrCurrent(app.OrganizationID, state.OrganizationID)
+	state.IsFirstParty = optionalBoolOrCurrent(app.IsFirstParty, state.IsFirstParty)
+	state.UsesPKCE = optionalBoolOrCurrent(app.UsesPKCE, state.UsesPKCE)
 	state.WasDynamicallyRegistered = optionalBool(app.WasDynamicallyRegistered)
 
-	if len(app.Scopes) > 0 {
-		scopes, scopeDiags := types.ListValueFrom(ctx, types.StringType, app.Scopes)
-		diags.Append(scopeDiags...)
+	scopes, scopeDiags := types.ListValueFrom(ctx, types.StringType, app.Scopes)
+	diags.Append(scopeDiags...)
+	if !scopeDiags.HasError() {
+		if app.Scopes == nil {
+			// A null list would leave a configured-but-empty attribute
+			// inconsistent with the plan; use an empty list instead.
+			scopes = types.ListValueMust(types.StringType, []attr.Value{})
+		}
 		state.Scopes = scopes
-	} else {
-		state.Scopes, _ = types.ListValueFrom(ctx, types.StringType, []string{})
 	}
 
-	state.RedirectURIs = make([]ConnectApplicationRedirectURIModel, 0, len(app.RedirectURIs))
+	redirectURIs := make([]ConnectApplicationRedirectURIModel, 0, len(app.RedirectURIs))
 	for _, redirectURI := range app.RedirectURIs {
-		state.RedirectURIs = append(state.RedirectURIs, ConnectApplicationRedirectURIModel{
+		redirectURIs = append(redirectURIs, ConnectApplicationRedirectURIModel{
 			URI:     types.StringValue(redirectURI.URI),
 			Default: types.BoolValue(redirectURI.Default),
 		})
+	}
+	redirectURIList, redirectDiags := types.ListValueFrom(ctx, connectApplicationRedirectURIObjectType(), redirectURIs)
+	diags.Append(redirectDiags...)
+	if !redirectDiags.HasError() {
+		state.RedirectURIs = redirectURIList
 	}
 
 	state.CreatedAt = types.StringValue(app.CreatedAt.Format(time.RFC3339))
@@ -407,4 +463,29 @@ func optionalBool(value *bool) types.Bool {
 		return types.BoolNull()
 	}
 	return types.BoolValue(*value)
+}
+
+// optionalStringOrCurrent keeps the planned (or prior) value when the API omits
+// an optional attribute from its response. Overwriting a configured value with
+// null makes Terraform reject the apply with "Provider produced inconsistent
+// result after apply"; an unknown has no value worth keeping, so it becomes null.
+func optionalStringOrCurrent(value *string, current types.String) types.String {
+	if value != nil {
+		return types.StringValue(*value)
+	}
+	if current.IsUnknown() {
+		return types.StringNull()
+	}
+	return current
+}
+
+// optionalBoolOrCurrent is optionalStringOrCurrent for booleans.
+func optionalBoolOrCurrent(value *bool, current types.Bool) types.Bool {
+	if value != nil {
+		return types.BoolValue(*value)
+	}
+	if current.IsUnknown() {
+		return types.BoolNull()
+	}
+	return current
 }
