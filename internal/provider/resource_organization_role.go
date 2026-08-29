@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -187,6 +188,16 @@ func (r *OrganizationRoleResource) Configure(ctx context.Context, req resource.C
 	r.client = client
 }
 
+// organizationRolePermissions converts the permission slugs returned by the API
+// into the list stored in state. Permissions are always represented as a list,
+// never null, so an unassigned role plans and applies consistently.
+func organizationRolePermissions(ctx context.Context, permissions []string) (types.List, diag.Diagnostics) {
+	if permissions == nil {
+		permissions = []string{}
+	}
+	return types.ListValueFrom(ctx, types.StringType, permissions)
+}
+
 func (r *OrganizationRoleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan OrganizationRoleResourceModel
 
@@ -238,17 +249,12 @@ func (r *OrganizationRoleResource) Create(ctx context.Context, req resource.Crea
 	plan.CreatedAt = types.StringValue(role.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 
-	// Map permissions - always set as empty list rather than null
-	if len(role.Permissions) > 0 {
-		permissions, diags := types.ListValueFrom(ctx, types.StringType, role.Permissions)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		plan.Permissions = permissions
-	} else {
-		plan.Permissions, _ = types.ListValueFrom(ctx, types.StringType, []string{})
+	permissions, diags := organizationRolePermissions(ctx, role.Permissions)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
+	plan.Permissions = permissions
 
 	tflog.Info(ctx, "Created organization role", map[string]any{
 		"id":   role.ID,
@@ -308,17 +314,12 @@ func (r *OrganizationRoleResource) Read(ctx context.Context, req resource.ReadRe
 	state.CreatedAt = types.StringValue(role.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 
-	// Map permissions - always set as empty list rather than null
-	if len(role.Permissions) > 0 {
-		permissions, diags := types.ListValueFrom(ctx, types.StringType, role.Permissions)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		state.Permissions = permissions
-	} else {
-		state.Permissions, _ = types.ListValueFrom(ctx, types.StringType, []string{})
+	permissions, diags := organizationRolePermissions(ctx, role.Permissions)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
+	state.Permissions = permissions
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -378,16 +379,21 @@ func (r *OrganizationRoleResource) Update(ctx context.Context, req resource.Upda
 	plan.Description = types.StringValue(role.Description)
 	plan.UpdatedAt = types.StringValue(role.UpdatedAt.Format(time.RFC3339))
 
-	// Map permissions - always set as empty list rather than null
-	if len(role.Permissions) > 0 {
-		permissions, diags := types.ListValueFrom(ctx, types.StringType, role.Permissions)
+	// permissions is Computed with UseStateForUnknown, so Terraform plans it as
+	// the value already held in state. The update endpoint does not echo
+	// permissions back, so rebuilding the list from its response empties it and
+	// Terraform rejects the apply with ".permissions: element N has vanished".
+	// Carry the prior value forward instead; assignments are managed by
+	// workos_organization_role_permission, and any change made outside Terraform
+	// is picked up by the next refresh.
+	plan.Permissions = state.Permissions
+	if plan.Permissions.IsNull() || plan.Permissions.IsUnknown() {
+		permissions, diags := organizationRolePermissions(ctx, role.Permissions)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 		plan.Permissions = permissions
-	} else {
-		plan.Permissions, _ = types.ListValueFrom(ctx, types.StringType, []string{})
 	}
 
 	tflog.Info(ctx, "Updated organization role", map[string]any{
