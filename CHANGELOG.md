@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.3](https://github.com/osodevops/terraform-provider-workos/compare/v2.4.2...v2.4.3) (2026-08-29)
+
+
+### Bug Fixes
+
+* preserve role permissions when updating name or description ([5b08e21](https://github.com/osodevops/terraform-provider-workos/commit/5b08e21af6076e840023e9c22474247d67d6d9ae))
+* preserve role permissions when updating name or description ([7d560f4](https://github.com/osodevops/terraform-provider-workos/commit/7d560f4b5860f5340ca9968254a598ddf336d109)), closes [#37](https://github.com/osodevops/terraform-provider-workos/issues/37)
+
 ## [2.4.2](https://github.com/osodevops/terraform-provider-workos/compare/v2.4.1...v2.4.2) (2026-07-28)
 
 
