@@ -396,6 +396,15 @@ func (r *EnvironmentRoleResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
+	// The role update endpoint does not echo permissions back. When this apply
+	// did not set them, permissions is Computed and planned from prior state, so
+	// taking the update response's empty set would empty it and Terraform would
+	// reject the apply with ".permissions: element N has vanished". Carry the
+	// prior set forward; an out-of-band change is picked up by the next refresh.
+	if !permissionsChanged && !state.Permissions.IsNull() && !state.Permissions.IsUnknown() {
+		plan.Permissions = state.Permissions
+	}
+
 	tflog.Info(ctx, "Updated environment role", map[string]any{
 		"id":   role.ID,
 		"slug": role.Slug,
