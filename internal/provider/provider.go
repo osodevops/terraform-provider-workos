@@ -179,6 +179,7 @@ func (p *WorkOSProvider) Resources(ctx context.Context) []func() resource.Resour
 		NewGroupResource,
 		NewGroupMembershipResource,
 		NewConnectApplicationResource,
+		NewConnectApplicationClientSecretResource,
 		NewEnvironmentRoleResource,
 		NewOrganizationRoleResource,
 		NewPermissionResource,
