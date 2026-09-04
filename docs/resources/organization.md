@@ -50,7 +50,11 @@ terraform import workos_organization.example org_01HXYZ...
 resource "workos_organization" "example" {
   name        = "Acme Corporation"
   external_id = "acme-corp-123"
-  domains     = ["acme.com", "acmecorp.com"]
+
+  domain_data {
+    domain = "acme.com"
+    state  = "pending"
+  }
 
   metadata = {
     tier   = "enterprise"
@@ -77,7 +81,8 @@ output "organization_created_at" {
 
 ### Optional
 
-- `domains` (Set of String) The domains associated with the organization. These are used for domain-based SSO routing.
+- `domain_data` (Block Set) Domains with verification state. Conflicts with domains. Do not also manage the same domain with workos_organization_domain: its verify attribute starts DNS TXT verification, while state = verified here records manual verification. Setting state to verified asserts ownership; a verified domain is unique in the environment and controls SSO routing. (see [below for nested schema](#nestedblock--domain_data))
+- `domains` (Set of String, Deprecated) Legacy domains associated with the organization. Use domain_data for new configurations.
 - `external_id` (String) The external ID of the organization. Use this to map the organization to an entity in your application.
 - `metadata` (Map of String) Metadata key/value pairs associated with the organization. Maximum of 10 key/value pairs.
 
@@ -86,3 +91,14 @@ output "organization_created_at" {
 - `created_at` (String) The timestamp when the organization was created (RFC3339 format).
 - `id` (String) The unique identifier of the organization (e.g., `org_01HXYZ...`).
 - `updated_at` (String) The timestamp when the organization was last updated (RFC3339 format).
+
+<a id="nestedblock--domain_data"></a>
+### Nested Schema for `domain_data`
+
+Required:
+
+- `domain` (String) The domain name associated with the organization.
+
+Optional:
+
+- `state` (String) Domain verification state. Defaults to pending. Use verified only after confirming ownership.
