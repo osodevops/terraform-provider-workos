@@ -22,6 +22,9 @@ import (
 	"github.com/osodevops/terraform-provider-workos/internal/client"
 )
 
+// redirectURIMockAPI is a minimal in-memory stand-in for the User Management
+// redirect URI endpoints. It lets the provider be driven end to end without a
+// live WorkOS environment.
 type redirectURIMockAPI struct {
 	mu      sync.Mutex
 	counter int

@@ -3,39 +3,12 @@
 page_title: "workos_redirect_uri Resource - workos"
 subcategory: ""
 description: |-
-  Manages an AuthKit login callback URI.
-  This is not the same as workos_connect_application.redirect_uris. Connect
-  applications (connect_app_…, POST /connect/applications) are OAuth or
-  M2M clients. AuthKit callbacks live on the environment's AuthKit application
-  (app_…) and are registered with POST /user_management/redirect_uris.
-  The target application is the API-key context; the create body has no
-  application_id.
-  Import
-  Redirect URIs can be imported by WorkOS id (redir_…) or by exact URI:
-  
-  terraform import workos_redirect_uri.example redir_01EHZNVPK3SFK441A1RGBFSHRT
-  terraform import workos_redirect_uri.example https://acme.example.com/api/auth/callback
+  Manages an AuthKit redirect URI on the User Management API. This is not workos_connect_application.redirect_uris.
 ---
 
 # workos_redirect_uri (Resource)
 
-Manages an AuthKit login callback URI.
-
-This is not the same as `workos_connect_application.redirect_uris`. Connect
-applications (`connect_app_…`, `POST /connect/applications`) are OAuth or
-M2M clients. AuthKit callbacks live on the environment's AuthKit application
-(`app_…`) and are registered with `POST /user_management/redirect_uris`.
-The target application is the API-key context; the create body has no
-`application_id`.
-
-## Import
-
-Redirect URIs can be imported by WorkOS id (`redir_…`) or by exact URI:
-
-```shell
-terraform import workos_redirect_uri.example redir_01EHZNVPK3SFK441A1RGBFSHRT
-terraform import workos_redirect_uri.example https://acme.example.com/api/auth/callback
-```
+Manages an AuthKit redirect URI on the User Management API. This is not workos_connect_application.redirect_uris.
 
 ## Example Usage
 
@@ -56,11 +29,11 @@ output "redirect_uri_id" {
 
 ### Required
 
-- `uri` (String) The HTTPS callback registered on the AuthKit application bound to the provider API key. Changing this value forces replacement.
+- `uri` (String) The HTTPS callback registered on the AuthKit application bound to the provider API key.
 
 ### Read-Only
 
-- `created_at` (String) The timestamp when the redirect URI was created (RFC3339 format).
+- `created_at` (String) The timestamp when the redirect URI was created.
 - `default` (Boolean) Whether WorkOS treats this as the default redirect URI.
-- `id` (String) The unique identifier of the redirect URI (`redir_…`).
-- `updated_at` (String) The timestamp when the redirect URI was last updated (RFC3339 format).
+- `id` (String) The unique identifier of the redirect URI.
+- `updated_at` (String) The timestamp when the redirect URI was last updated.

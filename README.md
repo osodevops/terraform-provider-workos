@@ -205,7 +205,7 @@ terraform import workos_permission.billing_read billing:read
 terraform import workos_environment_role.admin admin
 terraform import workos_organization_role.billing_admin org_01HXYZ.../org-billing-admin
 terraform import workos_organization_role_permission.billing_admin_read org_01HXYZ.../org-billing-admin/billing:read
-terraform import workos_redirect_uri.tenant_callback redir_01HXYZ...
+terraform import workos_redirect_uri.example redir_01HXYZ...
 ```
 
 OpenTofu uses the same import IDs with `tofu import`.
