@@ -205,6 +205,7 @@ terraform import workos_permission.billing_read billing:read
 terraform import workos_environment_role.admin admin
 terraform import workos_organization_role.billing_admin org_01HXYZ.../org-billing-admin
 terraform import workos_organization_role_permission.billing_admin_read org_01HXYZ.../org-billing-admin/billing:read
+terraform import workos_redirect_uri.example redir_01HXYZ...
 ```
 
 OpenTofu uses the same import IDs with `tofu import`.
@@ -220,6 +221,7 @@ OpenTofu uses the same import IDs with `tofu import`.
 | `workos_organization_role` | Manages organization authorization roles |
 | `workos_permission` | Manages environment-level permissions |
 | `workos_organization_role_permission` | Assigns a permission to an organization role |
+| `workos_redirect_uri` | Manages AuthKit login callback URIs |
 
 ## Data Sources
 
