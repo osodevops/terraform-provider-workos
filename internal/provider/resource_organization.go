@@ -8,11 +8,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/osodevops/terraform-provider-workos/internal/client"
@@ -20,6 +26,7 @@ import (
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &OrganizationResource{}
+var _ resource.ResourceWithConfigValidators = &OrganizationResource{}
 var _ resource.ResourceWithImportState = &OrganizationResource{}
 
 func NewOrganizationResource() resource.Resource {
@@ -38,8 +45,14 @@ type OrganizationResourceModel struct {
 	ExternalID types.String `tfsdk:"external_id"`
 	Metadata   types.Map    `tfsdk:"metadata"`
 	Domains    types.Set    `tfsdk:"domains"`
+	DomainData types.Set    `tfsdk:"domain_data"`
 	CreatedAt  types.String `tfsdk:"created_at"`
 	UpdatedAt  types.String `tfsdk:"updated_at"`
+}
+
+type OrganizationDomainDataModel struct {
+	Domain types.String `tfsdk:"domain"`
+	State  types.String `tfsdk:"state"`
 }
 
 func (r *OrganizationResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -59,8 +72,12 @@ companies and are used to group users, SSO connections, and directory sync confi
 
 ` + "```hcl" + `
 resource "workos_organization" "example" {
-  name    = "Acme Corporation"
-  domains = ["acme.com", "acmecorp.com"]
+  name = "Acme Corporation"
+
+  domain_data = [
+    { domain = "acme.com" },
+    { domain = "acmecorp.com" },
+  ]
 }
 ` + "```" + `
 
@@ -98,10 +115,34 @@ terraform import workos_organization.example org_01HXYZ...
 				ElementType:         types.StringType,
 			},
 			"domains": schema.SetAttribute{
-				Description:         "The domains associated with the organization.",
-				MarkdownDescription: "The domains associated with the organization. These are used for domain-based SSO routing.",
+				Description:         "Legacy domains associated with the organization. Use domain_data for new configurations.",
+				MarkdownDescription: "Legacy domains associated with the organization. Deprecated by the WorkOS Organizations API in favour of `domain_data`.",
+				DeprecationMessage:  "Use domain_data instead. The WorkOS Organizations API has deprecated the domains field.",
 				Optional:            true,
 				ElementType:         types.StringType,
+			},
+			"domain_data": schema.SetNestedAttribute{
+				Description:         "Domains with verification state. Conflicts with domains.",
+				MarkdownDescription: "Domains with their verification state. Conflicts with `domains`.\n\nDo not also manage the same domain with `workos_organization_domain`: that resource's `verify` attribute starts DNS TXT verification, while `state = \"verified\"` here records that you verified ownership yourself. Setting `state` to `verified` asserts ownership; a verified domain is unique across the environment and controls SSO routing.\n\nRemoving every entry does not clear the organization's existing domains: the provider omits an empty list from the update request. Remove domains through `workos_organization_domain` or the WorkOS dashboard.",
+				Optional:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"domain": schema.StringAttribute{
+							Description: "The domain name associated with the organization.",
+							Required:    true,
+						},
+						"state": schema.StringAttribute{
+							Description:         "Domain verification state. Defaults to pending. Use verified only after confirming ownership.",
+							MarkdownDescription: "Domain verification state, either `pending` or `verified`. Defaults to `pending`. Use `verified` only after confirming ownership.",
+							Optional:            true,
+							Computed:            true,
+							Default:             stringdefault.StaticString("pending"),
+							Validators: []validator.String{
+								stringvalidator.OneOf("pending", "verified"),
+							},
+						},
+					},
+				},
 			},
 			"created_at": schema.StringAttribute{
 				Description:         "The timestamp when the organization was created.",
@@ -120,6 +161,7 @@ terraform import workos_organization.example org_01HXYZ...
 						configAttributes: []path.Path{
 							path.Root("name"),
 							path.Root("domains"),
+							path.Root("domain_data"),
 							path.Root("external_id"),
 							path.Root("metadata"),
 						},
@@ -127,6 +169,15 @@ terraform import workos_organization.example org_01HXYZ...
 				},
 			},
 		},
+	}
+}
+
+func (r *OrganizationResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		resourcevalidator.Conflicting(
+			path.MatchRoot("domains"),
+			path.MatchRoot("domain_data"),
+		),
 	}
 }
 
@@ -198,6 +249,13 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 			})
 		}
 	}
+
+	domainData, diags := organizationDomainDataFromPlan(ctx, plan.DomainData)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	createReq.DomainData = append(createReq.DomainData, domainData...)
 
 	// Create the organization
 	org, err := r.client.CreateOrganization(ctx, createReq)
@@ -294,8 +352,15 @@ func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadReques
 		state.Metadata = types.MapNull(types.StringType)
 	}
 
-	// Map domains
-	if len(org.Domains) > 0 {
+	if !state.DomainData.IsNull() && !state.DomainData.IsUnknown() {
+		domainData, diags := organizationDomainDataToSet(ctx, org.Domains)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.DomainData = domainData
+		state.Domains = types.SetNull(types.StringType)
+	} else if len(org.Domains) > 0 {
 		domainStrings := make([]string, len(org.Domains))
 		for i, d := range org.Domains {
 			domainStrings[i] = d.Domain
@@ -332,7 +397,7 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 	})
 
 	// Skip update if no user-configurable attributes changed
-	if plan.Name.Equal(state.Name) && plan.Domains.Equal(state.Domains) && plan.ExternalID.Equal(state.ExternalID) && plan.Metadata.Equal(state.Metadata) {
+	if plan.Name.Equal(state.Name) && plan.Domains.Equal(state.Domains) && plan.DomainData.Equal(state.DomainData) && plan.ExternalID.Equal(state.ExternalID) && plan.Metadata.Equal(state.Metadata) {
 		plan.ID = state.ID
 		plan.CreatedAt = state.CreatedAt
 		plan.UpdatedAt = state.UpdatedAt
@@ -394,6 +459,13 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 			})
 		}
 	}
+
+	domainData, diags := organizationDomainDataFromPlan(ctx, plan.DomainData)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	updateReq.DomainData = append(updateReq.DomainData, domainData...)
 
 	// Update the organization
 	org, err := r.client.UpdateOrganization(ctx, state.ID.ValueString(), updateReq)
@@ -477,4 +549,42 @@ func (r *OrganizationResource) ImportState(ctx context.Context, req resource.Imp
 	})
 
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func organizationDomainDataFromPlan(ctx context.Context, value types.Set) ([]client.DomainData, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if value.IsNull() || value.IsUnknown() {
+		return nil, diags
+	}
+
+	var items []OrganizationDomainDataModel
+	diags.Append(value.ElementsAs(ctx, &items, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	out := make([]client.DomainData, 0, len(items))
+	for _, item := range items {
+		out = append(out, client.DomainData{
+			Domain: item.Domain.ValueString(),
+			State:  item.State.ValueString(),
+		})
+	}
+	return out, diags
+}
+
+func organizationDomainDataToSet(ctx context.Context, domains []client.Domain) (types.Set, diag.Diagnostics) {
+	items := make([]OrganizationDomainDataModel, len(domains))
+	for i, domain := range domains {
+		items[i] = OrganizationDomainDataModel{
+			Domain: types.StringValue(domain.Domain),
+			State:  types.StringValue(domain.State),
+		}
+	}
+	return types.SetValueFrom(ctx, types.ObjectType{
+		AttrTypes: map[string]attr.Type{
+			"domain": types.StringType,
+			"state":  types.StringType,
+		},
+	}, items)
 }
