@@ -5,8 +5,15 @@ resource "workos_connect_application" "m2m" {
   scopes           = ["billing:read"]
 }
 
+# WorkOS returns the plaintext secret only once, on create, so it is stored in
+# Terraform state. Protect the state file accordingly.
 resource "workos_connect_application_client_secret" "m2m" {
   application_id = workos_connect_application.m2m.id
+
+  # Changing any value here mints a replacement and revokes the old secret.
+  rotate_triggers = {
+    rotated_at = "2026-01-01T00:00:00Z"
+  }
 }
 
 output "client_id" {

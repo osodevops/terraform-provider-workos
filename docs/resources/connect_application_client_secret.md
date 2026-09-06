@@ -3,12 +3,47 @@
 page_title: "workos_connect_application_client_secret Resource - workos"
 subcategory: ""
 description: |-
-  Manages a client secret for a WorkOS Connect application.
+  Mints and revokes a client secret for a WorkOS Connect application.
+  WorkOS returns the plaintext secret only once, in the create response, so the provider stores it in
+  Terraform state. Anyone who can read your state file can read this secret. Use an encrypted
+  remote backend with access controls, and treat the state as the credential itself. WorkOS allows at
+  most five secrets per application.
+  There is no update endpoint. To rotate a secret, change rotate_triggers (or run
+  terraform apply -replace), which mints a replacement and revokes the old one. Destroying the
+  resource revokes the secret immediately, so anything still authenticating with it will start
+  failing.
+  An imported secret has a null secret, because WorkOS never returns the plaintext again.
+  Rotate to obtain a usable value.
+  Import
+  Client secrets are imported using the application ID and the secret ID:
+  
+  terraform import workos_connect_application_client_secret.example connect_app_01HXYZ.../connect_app_secret_01HXYZ...
 ---
 
 # workos_connect_application_client_secret (Resource)
 
-Manages a client secret for a WorkOS Connect application.
+Mints and revokes a client secret for a WorkOS Connect application.
+
+WorkOS returns the plaintext secret only once, in the create response, so the provider stores it in
+Terraform state. **Anyone who can read your state file can read this secret.** Use an encrypted
+remote backend with access controls, and treat the state as the credential itself. WorkOS allows at
+most five secrets per application.
+
+There is no update endpoint. To rotate a secret, change `rotate_triggers` (or run
+`terraform apply -replace`), which mints a replacement and revokes the old one. Destroying the
+resource revokes the secret immediately, so anything still authenticating with it will start
+failing.
+
+An imported secret has a null `secret`, because WorkOS never returns the plaintext again.
+Rotate to obtain a usable value.
+
+## Import
+
+Client secrets are imported using the application ID and the secret ID:
+
+```shell
+terraform import workos_connect_application_client_secret.example connect_app_01HXYZ.../connect_app_secret_01HXYZ...
+```
 
 ## Example Usage
 
@@ -20,8 +55,15 @@ resource "workos_connect_application" "m2m" {
   scopes           = ["billing:read"]
 }
 
+# WorkOS returns the plaintext secret only once, on create, so it is stored in
+# Terraform state. Protect the state file accordingly.
 resource "workos_connect_application_client_secret" "m2m" {
   application_id = workos_connect_application.m2m.id
+
+  # Changing any value here mints a replacement and revokes the old secret.
+  rotate_triggers = {
+    rotated_at = "2026-01-01T00:00:00Z"
+  }
 }
 
 output "client_id" {
@@ -41,11 +83,15 @@ output "client_secret" {
 
 - `application_id` (String) The Connect application ID or client ID.
 
+### Optional
+
+- `rotate_triggers` (Map of String) Arbitrary key/value pairs that force a new secret to be minted when any value changes. Use this to rotate on a schedule or alongside another resource, for example `{ rotated_at = time_rotating.quarterly.rotation_rfc3339 }`. Changing it replaces the resource: WorkOS has no update endpoint for client secrets.
+
 ### Read-Only
 
 - `created_at` (String) The timestamp when the secret was created.
 - `id` (String) The unique identifier of the client secret.
 - `last_used_at` (String) The timestamp when the secret was last used.
-- `secret` (String, Sensitive) The plaintext client secret. Only returned on create.
+- `secret` (String, Sensitive) The plaintext client secret. WorkOS returns it only in the create response, so it is stored in Terraform state and is null for imported secrets.
 - `secret_hint` (String) A hint for the secret.
 - `updated_at` (String) The timestamp when the secret was last updated.

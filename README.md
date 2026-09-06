@@ -205,6 +205,7 @@ terraform import workos_permission.billing_read billing:read
 terraform import workos_environment_role.admin admin
 terraform import workos_organization_role.billing_admin org_01HXYZ.../org-billing-admin
 terraform import workos_organization_role_permission.billing_admin_read org_01HXYZ.../org-billing-admin/billing:read
+terraform import workos_connect_application_client_secret.m2m connect_app_01HXYZ.../connect_app_secret_01HXYZ...
 ```
 
 OpenTofu uses the same import IDs with `tofu import`.
@@ -220,6 +221,7 @@ OpenTofu uses the same import IDs with `tofu import`.
 | `workos_organization_role` | Manages organization authorization roles |
 | `workos_permission` | Manages environment-level permissions |
 | `workos_organization_role_permission` | Assigns a permission to an organization role |
+| `workos_connect_application_client_secret` | Mints and revokes Connect application client secrets |
 
 ## Data Sources
 

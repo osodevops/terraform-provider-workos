@@ -1,3 +1,6 @@
+// Copyright (c) OSO DevOps
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -8,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -27,13 +31,14 @@ type ConnectApplicationClientSecretResource struct {
 }
 
 type ConnectApplicationClientSecretResourceModel struct {
-	ID            types.String `tfsdk:"id"`
-	ApplicationID types.String `tfsdk:"application_id"`
-	SecretHint    types.String `tfsdk:"secret_hint"`
-	Secret        types.String `tfsdk:"secret"`
-	LastUsedAt    types.String `tfsdk:"last_used_at"`
-	CreatedAt     types.String `tfsdk:"created_at"`
-	UpdatedAt     types.String `tfsdk:"updated_at"`
+	ID             types.String `tfsdk:"id"`
+	ApplicationID  types.String `tfsdk:"application_id"`
+	RotateTriggers types.Map    `tfsdk:"rotate_triggers"`
+	SecretHint     types.String `tfsdk:"secret_hint"`
+	Secret         types.String `tfsdk:"secret"`
+	LastUsedAt     types.String `tfsdk:"last_used_at"`
+	CreatedAt      types.String `tfsdk:"created_at"`
+	UpdatedAt      types.String `tfsdk:"updated_at"`
 }
 
 func (r *ConnectApplicationClientSecretResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -43,6 +48,30 @@ func (r *ConnectApplicationClientSecretResource) Metadata(ctx context.Context, r
 func (r *ConnectApplicationClientSecretResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a client secret for a WorkOS Connect application.",
+		MarkdownDescription: `
+Mints and revokes a client secret for a WorkOS Connect application.
+
+WorkOS returns the plaintext secret only once, in the create response, so the provider stores it in
+Terraform state. **Anyone who can read your state file can read this secret.** Use an encrypted
+remote backend with access controls, and treat the state as the credential itself. WorkOS allows at
+most five secrets per application.
+
+There is no update endpoint. To rotate a secret, change ` + "`rotate_triggers`" + ` (or run
+` + "`terraform apply -replace`" + `), which mints a replacement and revokes the old one. Destroying the
+resource revokes the secret immediately, so anything still authenticating with it will start
+failing.
+
+An imported secret has a null ` + "`secret`" + `, because WorkOS never returns the plaintext again.
+Rotate to obtain a usable value.
+
+## Import
+
+Client secrets are imported using the application ID and the secret ID:
+
+` + "```shell" + `
+terraform import workos_connect_application_client_secret.example connect_app_01HXYZ.../connect_app_secret_01HXYZ...
+` + "```" + `
+`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "The unique identifier of the client secret.",
@@ -58,14 +87,24 @@ func (r *ConnectApplicationClientSecretResource) Schema(ctx context.Context, req
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			"rotate_triggers": schema.MapAttribute{
+				Description:         "Arbitrary key/value pairs that force a new secret to be minted when they change.",
+				MarkdownDescription: "Arbitrary key/value pairs that force a new secret to be minted when any value changes. Use this to rotate on a schedule or alongside another resource, for example `{ rotated_at = time_rotating.quarterly.rotation_rfc3339 }`. Changing it replaces the resource: WorkOS has no update endpoint for client secrets.",
+				Optional:            true,
+				ElementType:         types.StringType,
+				PlanModifiers: []planmodifier.Map{
+					mapplanmodifier.RequiresReplace(),
+				},
+			},
 			"secret_hint": schema.StringAttribute{
 				Description: "A hint for the secret.",
 				Computed:    true,
 			},
 			"secret": schema.StringAttribute{
-				Description: "The plaintext client secret. Only returned on create.",
-				Computed:    true,
-				Sensitive:   true,
+				Description:         "The plaintext client secret. Only returned on create and stored in Terraform state.",
+				MarkdownDescription: "The plaintext client secret. WorkOS returns it only in the create response, so it is stored in Terraform state and is null for imported secrets.",
+				Computed:            true,
+				Sensitive:           true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -141,13 +180,16 @@ func (r *ConnectApplicationClientSecretResource) Read(ctx context.Context, req r
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
+// Update is unreachable in practice: every configurable attribute requires
+// replacement and WorkOS exposes no update endpoint for client secrets. It
+// carries prior state forward so the framework contract is satisfied.
 func (r *ConnectApplicationClientSecretResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan ConnectApplicationClientSecretResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	var state ConnectApplicationClientSecretResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *ConnectApplicationClientSecretResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

@@ -266,3 +266,87 @@ resource "workos_connect_application_client_secret" "previous" {
 
 	return config
 }
+
+func testAccConnectApplicationClientSecretRotateConfig(baseURL, rotatedAt string) string {
+	return fmt.Sprintf(`
+provider "workos" {
+  api_key  = "sk_test"
+  base_url = %[1]q
+}
+
+resource "workos_organization" "public" {
+  name = "Example Public"
+}
+
+resource "workos_connect_application" "m2m" {
+  name             = "billing-worker"
+  application_type = "m2m"
+  organization_id  = workos_organization.public.id
+  scopes           = ["billing:read"]
+}
+
+resource "workos_connect_application_client_secret" "current" {
+  application_id = workos_connect_application.m2m.id
+
+  rotate_triggers = {
+    rotated_at = %[2]q
+  }
+}
+`, baseURL, rotatedAt)
+}
+
+// TestAccConnectApplicationClientSecretResource_RotateTriggers proves that
+// changing rotate_triggers mints a new secret and revokes the old one, which is
+// the only rotation path available: WorkOS has no update endpoint.
+func TestAccConnectApplicationClientSecretResource_RotateTriggers(t *testing.T) {
+	_, server := newConnectApplicationMockAPI(t)
+
+	t.Setenv("WORKOS_API_KEY", "sk_test")
+	t.Setenv("WORKOS_BASE_URL", server.URL)
+
+	var firstID, firstSecret string
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccConnectApplicationClientSecretRotateConfig(server.URL, "2026-01-01T00:00:00Z"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"workos_connect_application_client_secret.current", "rotate_triggers.rotated_at",
+						"2026-01-01T00:00:00Z",
+					),
+					func(state *terraform.State) error {
+						rs := state.RootModule().Resources["workos_connect_application_client_secret.current"]
+						firstID = rs.Primary.Attributes["id"]
+						firstSecret = rs.Primary.Attributes["secret"]
+						if firstID == "" || firstSecret == "" {
+							return fmt.Errorf("expected an id and a plaintext secret after create")
+						}
+						return nil
+					},
+				),
+			},
+			{
+				// A stable trigger must not churn the secret.
+				Config:   testAccConnectApplicationClientSecretRotateConfig(server.URL, "2026-01-01T00:00:00Z"),
+				PlanOnly: true,
+			},
+			{
+				Config: testAccConnectApplicationClientSecretRotateConfig(server.URL, "2026-04-01T00:00:00Z"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					func(state *terraform.State) error {
+						rs := state.RootModule().Resources["workos_connect_application_client_secret.current"]
+						if got := rs.Primary.Attributes["id"]; got == firstID {
+							return fmt.Errorf("expected a new secret id after rotation, still %q", got)
+						}
+						if got := rs.Primary.Attributes["secret"]; got == firstSecret {
+							return fmt.Errorf("expected a new plaintext secret after rotation")
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
