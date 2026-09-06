@@ -2,7 +2,11 @@
 resource "workos_organization" "example" {
   name        = "Acme Corporation"
   external_id = "acme-corp-123"
-  domains     = ["acme.com", "acmecorp.com"]
+
+  domain_data = [{
+    domain = "acme.com"
+    state  = "pending"
+  }]
 
   metadata = {
     tier   = "enterprise"

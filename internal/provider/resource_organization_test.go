@@ -5,6 +5,7 @@ package provider
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 	"time"
 
@@ -71,6 +72,63 @@ func TestAccOrganizationResource_WithDomains(t *testing.T) {
 	})
 }
 
+func TestAccOrganizationResource_WithDomainData(t *testing.T) {
+	name := fmt.Sprintf("tf-acc-test-%d", time.Now().UnixNano())
+	domain := fmt.Sprintf("test-%d.example.com", time.Now().UnixNano())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccOrganizationResourceConfigWithDomainData(name, domain),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("workos_organization.test", "name", name),
+					resource.TestCheckResourceAttr("workos_organization.test", "domain_data.#", "1"),
+					resource.TestCheckTypeSetElemNestedAttrs(
+						"workos_organization.test",
+						"domain_data.*",
+						map[string]string{
+							"domain": domain,
+							"state":  "pending",
+						},
+					),
+				),
+			},
+		},
+	})
+}
+
+func TestAccOrganizationResource_DomainDataConflictsWithDomains(t *testing.T) {
+	name := fmt.Sprintf("tf-acc-test-%d", time.Now().UnixNano())
+	domain := fmt.Sprintf("test-%d.example.com", time.Now().UnixNano())
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccOrganizationResourceConfigWithConflictingDomains(name, domain),
+				ExpectError: regexp.MustCompile(`(?i)cannot be configured together`),
+			},
+		},
+	})
+}
+
+func TestAccOrganizationResource_DomainDataRejectsInvalidState(t *testing.T) {
+	name := fmt.Sprintf("tf-acc-test-%d", time.Now().UnixNano())
+	domain := fmt.Sprintf("test-%d.example.com", time.Now().UnixNano())
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccOrganizationResourceConfigWithDomainDataState(name, domain, "invalid"),
+				ExpectError: regexp.MustCompile(`(?i)value must be one of`),
+			},
+		},
+	})
+}
+
 func TestAccOrganizationResource_WithMetadataAndExternalID(t *testing.T) {
 	name := fmt.Sprintf("tf-acc-test-%d", time.Now().UnixNano())
 	externalID := fmt.Sprintf("ext-%d", time.Now().UnixNano())
@@ -120,6 +178,40 @@ func testAccOrganizationResourceConfigWithDomains(name, domain string) string {
 resource "workos_organization" "test" {
   name    = %[1]q
   domains = [%[2]q]
+}
+`, name, domain)
+}
+
+func testAccOrganizationResourceConfigWithDomainData(name, domain string) string {
+	return testAccOrganizationResourceConfigWithDomainDataState(name, domain, "")
+}
+
+func testAccOrganizationResourceConfigWithDomainDataState(name, domain, state string) string {
+	stateConfig := ""
+	if state != "" {
+		stateConfig = fmt.Sprintf(",\n    state  = %q", state)
+	}
+
+	return fmt.Sprintf(`
+resource "workos_organization" "test" {
+  name = %[1]q
+
+  domain_data = [{
+    domain = %[2]q%[3]s
+  }]
+}
+`, name, domain, stateConfig)
+}
+
+func testAccOrganizationResourceConfigWithConflictingDomains(name, domain string) string {
+	return fmt.Sprintf(`
+resource "workos_organization" "test" {
+  name    = %[1]q
+  domains = [%[2]q]
+
+  domain_data = [{
+    domain = %[2]q
+  }]
 }
 `, name, domain)
 }
