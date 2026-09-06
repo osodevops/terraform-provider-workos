@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0](https://github.com/osodevops/terraform-provider-workos/compare/v2.4.3...v2.5.0) (2026-09-06)
+
+
+### Features
+
+* add AuthKit redirect URI resource ([0a39071](https://github.com/osodevops/terraform-provider-workos/commit/0a390714756a19e20b36ba862567eb468e7fd7ed))
+* add Connect application client secret ([4319909](https://github.com/osodevops/terraform-provider-workos/commit/431990949af703ebb91b8ec70631bd6a296a160e))
+* add domain_data on workos_organization ([2b47d01](https://github.com/osodevops/terraform-provider-workos/commit/2b47d0170ede28d19d293cc9446ff47ef884e56c))
+* add domain_data on workos_organization ([45e677d](https://github.com/osodevops/terraform-provider-workos/commit/45e677d045338a287f5cbe1c16733797d15b9b5e))
+* **connect-secret:** add rotate_triggers and document state exposure ([72e2acc](https://github.com/osodevops/terraform-provider-workos/commit/72e2acc57e495beffbc14b9f235b67e51591cc47))
+* **resource:** add AuthKit redirect URI resource ([313a106](https://github.com/osodevops/terraform-provider-workos/commit/313a106dfa3ac347983e3a78e179145b3fff7e8b))
+* **resource:** add Connect application client secret ([b14d20a](https://github.com/osodevops/terraform-provider-workos/commit/b14d20aa5afbdb175579267c14c7403c2f87144e))
+
 ## [2.4.3](https://github.com/osodevops/terraform-provider-workos/compare/v2.4.2...v2.4.3) (2026-08-29)
 
 
