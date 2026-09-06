@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -19,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/osodevops/terraform-provider-workos/internal/client"
 )
 
@@ -159,7 +161,7 @@ func redirectURINullState(t *testing.T, s schema.Schema) tfsdk.State {
 	}
 }
 
-func TestRedirectURIResourceCreate_AdoptsExisting(t *testing.T) {
+func TestRedirectURIResourceCreate_RefusesToAdoptExisting(t *testing.T) {
 	ctx := context.Background()
 	api, server := newRedirectURIMockAPI(t)
 
@@ -188,19 +190,22 @@ func TestRedirectURIResourceCreate_AdoptsExisting(t *testing.T) {
 	resp := &fwresource.CreateResponse{State: redirectURINullState(t, s)}
 	r.Create(ctx, fwresource.CreateRequest{Plan: plan}, resp)
 
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("Create returned errors: %v", resp.Diagnostics)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected Create to fail when the redirect URI already exists")
 	}
 
-	var state RedirectURIResourceModel
-	if diags := resp.State.Get(ctx, &state); diags.HasError() {
-		t.Fatalf("failed to read resulting state: %v", diags)
+	var detail string
+	for _, d := range resp.Diagnostics.Errors() {
+		detail += d.Summary() + " " + d.Detail()
 	}
-	if state.ID.ValueString() != existing.ID {
-		t.Fatalf("expected to adopt %q, got %q", existing.ID, state.ID.ValueString())
+	if !strings.Contains(detail, "already registered") {
+		t.Fatalf("expected an already-registered error, got: %s", detail)
+	}
+	if !strings.Contains(detail, "terraform import") {
+		t.Fatalf("expected the error to point at terraform import, got: %s", detail)
 	}
 	if len(api.uris) != 1 {
-		t.Fatalf("expected existing URI to be reused, have %d records", len(api.uris))
+		t.Fatalf("expected the pre-existing URI to be left alone, have %d records", len(api.uris))
 	}
 }
 
@@ -237,7 +242,7 @@ func TestAccRedirectURIResource_MockAPI(t *testing.T) {
 	})
 }
 
-func TestAccRedirectURIResource_AdoptExisting(t *testing.T) {
+func TestAccRedirectURIResource_ImportsExisting(t *testing.T) {
 	api, server := newRedirectURIMockAPI(t)
 
 	now := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
@@ -258,12 +263,28 @@ func TestAccRedirectURIResource_AdoptExisting(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccRedirectURIMockConfig(server.URL, existing.URI),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("workos_redirect_uri.tenant_callback", "id", existing.ID),
-					resource.TestCheckResourceAttr("workos_redirect_uri.tenant_callback", "uri", existing.URI),
-					resource.TestCheckResourceAttr("workos_redirect_uri.tenant_callback", "default", "true"),
-				),
+				// Creating a URI that already exists must fail and point at import.
+				Config:      testAccRedirectURIMockConfig(server.URL, existing.URI),
+				ExpectError: regexp.MustCompile(`(?s)already\s+registered.*terraform\s+import`),
+			},
+			{
+				// The documented recovery: import the existing URI by its URI.
+				Config:        testAccRedirectURIMockConfig(server.URL, existing.URI),
+				ResourceName:  "workos_redirect_uri.tenant_callback",
+				ImportState:   true,
+				ImportStateId: existing.URI,
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					if len(states) != 1 {
+						return fmt.Errorf("expected 1 imported instance, got %d", len(states))
+					}
+					if got := states[0].ID; got != existing.ID {
+						return fmt.Errorf("expected imported id %q, got %q", existing.ID, got)
+					}
+					if got := states[0].Attributes["uri"]; got != existing.URI {
+						return fmt.Errorf("expected imported uri %q, got %q", existing.URI, got)
+					}
+					return nil
+				},
 			},
 		},
 	})

@@ -1,3 +1,6 @@
+// Copyright (c) OSO DevOps
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -42,6 +45,35 @@ func (r *RedirectURIResource) Metadata(ctx context.Context, req resource.Metadat
 func (r *RedirectURIResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages an AuthKit redirect URI on the User Management API. This is not workos_connect_application.redirect_uris.",
+		MarkdownDescription: `
+Manages an AuthKit redirect URI on the User Management API.
+
+Redirect URIs are the login callbacks AuthKit is allowed to return users to. They belong to the
+AuthKit application bound to the provider API key, not to an organization. This is a different
+concept from ` + "`workos_connect_application.redirect_uris`" + `, which scopes callbacks to a single
+Connect application.
+
+WorkOS has no update endpoint for redirect URIs, so changing ` + "`uri`" + ` replaces the resource.
+
+Registering a URI that already exists fails rather than adopting it, so that a later
+` + "`terraform destroy`" + ` cannot revoke a callback this configuration did not create. Import the
+existing URI instead.
+
+## Import
+
+Redirect URIs can be imported by ID:
+
+` + "```shell" + `
+terraform import workos_redirect_uri.example redir_01HXYZ...
+` + "```" + `
+
+They can also be imported by their exact URI, which is useful when adopting a callback that was
+registered outside Terraform:
+
+` + "```shell" + `
+terraform import workos_redirect_uri.example https://acme.example.com/api/auth/callback
+` + "```" + `
+`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "The unique identifier of the redirect URI.",
@@ -104,13 +136,23 @@ func (r *RedirectURIResource) Create(ctx context.Context, req resource.CreateReq
 	redirectURI, err := r.client.CreateRedirectURI(ctx, &client.RedirectURICreateRequest{URI: uri})
 	if err != nil {
 		if client.IsExistingRedirectURI(err) {
-			tflog.Info(ctx, "Redirect URI already exists, adopting", map[string]any{"uri": uri})
-			redirectURI, err = r.client.GetRedirectURIByURI(ctx, uri)
-		}
-		if err != nil {
-			resp.Diagnostics.AddError("Error Creating Redirect URI", "Could not create redirect URI: "+err.Error())
+			// Do not silently take ownership of a redirect URI this configuration
+			// did not create: a later destroy would revoke a callback that other
+			// systems may depend on. Terraform's import workflow is the supported
+			// way to bring existing infrastructure under management.
+			resp.Diagnostics.AddError(
+				"Redirect URI Already Exists",
+				fmt.Sprintf(
+					"The redirect URI %q is already registered on this AuthKit application, so it was not created.\n\n"+
+						"Import the existing redirect URI instead of creating it:\n"+
+						"    terraform import workos_redirect_uri.<name> %s",
+					uri, uri,
+				),
+			)
 			return
 		}
+		resp.Diagnostics.AddError("Error Creating Redirect URI", "Could not create redirect URI: "+err.Error())
+		return
 	}
 
 	redirectURIToState(&plan, redirectURI)
@@ -138,21 +180,17 @@ func (r *RedirectURIResource) Read(ctx context.Context, req resource.ReadRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
+// Update is unreachable in practice: uri is the only configurable attribute and
+// it requires replacement, and WorkOS exposes no update endpoint for redirect
+// URIs. It carries prior state forward so the framework contract is satisfied.
 func (r *RedirectURIResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan RedirectURIResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	var state RedirectURIResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	redirectURI, err := r.client.GetRedirectURI(ctx, plan.ID.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("Error Updating Redirect URI", "Could not refresh redirect URI: "+err.Error())
-		return
-	}
-
-	redirectURIToState(&plan, redirectURI)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *RedirectURIResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

@@ -3,12 +3,55 @@
 page_title: "workos_redirect_uri Resource - workos"
 subcategory: ""
 description: |-
-  Manages an AuthKit redirect URI on the User Management API. This is not workos_connect_application.redirect_uris.
+  Manages an AuthKit redirect URI on the User Management API.
+  Redirect URIs are the login callbacks AuthKit is allowed to return users to. They belong to the
+  AuthKit application bound to the provider API key, not to an organization. This is a different
+  concept from workos_connect_application.redirect_uris, which scopes callbacks to a single
+  Connect application.
+  WorkOS has no update endpoint for redirect URIs, so changing uri replaces the resource.
+  Registering a URI that already exists fails rather than adopting it, so that a later
+  terraform destroy cannot revoke a callback this configuration did not create. Import the
+  existing URI instead.
+  Import
+  Redirect URIs can be imported by ID:
+  
+  terraform import workos_redirect_uri.example redir_01HXYZ...
+  
+  They can also be imported by their exact URI, which is useful when adopting a callback that was
+  registered outside Terraform:
+  
+  terraform import workos_redirect_uri.example https://acme.example.com/api/auth/callback
 ---
 
 # workos_redirect_uri (Resource)
 
-Manages an AuthKit redirect URI on the User Management API. This is not workos_connect_application.redirect_uris.
+Manages an AuthKit redirect URI on the User Management API.
+
+Redirect URIs are the login callbacks AuthKit is allowed to return users to. They belong to the
+AuthKit application bound to the provider API key, not to an organization. This is a different
+concept from `workos_connect_application.redirect_uris`, which scopes callbacks to a single
+Connect application.
+
+WorkOS has no update endpoint for redirect URIs, so changing `uri` replaces the resource.
+
+Registering a URI that already exists fails rather than adopting it, so that a later
+`terraform destroy` cannot revoke a callback this configuration did not create. Import the
+existing URI instead.
+
+## Import
+
+Redirect URIs can be imported by ID:
+
+```shell
+terraform import workos_redirect_uri.example redir_01HXYZ...
+```
+
+They can also be imported by their exact URI, which is useful when adopting a callback that was
+registered outside Terraform:
+
+```shell
+terraform import workos_redirect_uri.example https://acme.example.com/api/auth/callback
+```
 
 ## Example Usage
 
