@@ -72,8 +72,12 @@ companies and are used to group users, SSO connections, and directory sync confi
 
 ` + "```hcl" + `
 resource "workos_organization" "example" {
-  name    = "Acme Corporation"
-  domains = ["acme.com", "acmecorp.com"]
+  name = "Acme Corporation"
+
+  domain_data = [
+    { domain = "acme.com" },
+    { domain = "acmecorp.com" },
+  ]
 }
 ` + "```" + `
 
@@ -111,10 +115,34 @@ terraform import workos_organization.example org_01HXYZ...
 				ElementType:         types.StringType,
 			},
 			"domains": schema.SetAttribute{
-				Description:        "Legacy domains associated with the organization. Use domain_data for new configurations.",
-				DeprecationMessage: "Use domain_data instead. The WorkOS Organizations API has deprecated the domains field.",
-				Optional:           true,
-				ElementType:        types.StringType,
+				Description:         "Legacy domains associated with the organization. Use domain_data for new configurations.",
+				MarkdownDescription: "Legacy domains associated with the organization. Deprecated by the WorkOS Organizations API in favour of `domain_data`.",
+				DeprecationMessage:  "Use domain_data instead. The WorkOS Organizations API has deprecated the domains field.",
+				Optional:            true,
+				ElementType:         types.StringType,
+			},
+			"domain_data": schema.SetNestedAttribute{
+				Description:         "Domains with verification state. Conflicts with domains.",
+				MarkdownDescription: "Domains with their verification state. Conflicts with `domains`.\n\nDo not also manage the same domain with `workos_organization_domain`: that resource's `verify` attribute starts DNS TXT verification, while `state = \"verified\"` here records that you verified ownership yourself. Setting `state` to `verified` asserts ownership; a verified domain is unique across the environment and controls SSO routing.\n\nRemoving every entry does not clear the organization's existing domains: the provider omits an empty list from the update request. Remove domains through `workos_organization_domain` or the WorkOS dashboard.",
+				Optional:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"domain": schema.StringAttribute{
+							Description: "The domain name associated with the organization.",
+							Required:    true,
+						},
+						"state": schema.StringAttribute{
+							Description:         "Domain verification state. Defaults to pending. Use verified only after confirming ownership.",
+							MarkdownDescription: "Domain verification state, either `pending` or `verified`. Defaults to `pending`. Use `verified` only after confirming ownership.",
+							Optional:            true,
+							Computed:            true,
+							Default:             stringdefault.StaticString("pending"),
+							Validators: []validator.String{
+								stringvalidator.OneOf("pending", "verified"),
+							},
+						},
+					},
+				},
 			},
 			"created_at": schema.StringAttribute{
 				Description:         "The timestamp when the organization was created.",
@@ -136,28 +164,6 @@ terraform import workos_organization.example org_01HXYZ...
 							path.Root("domain_data"),
 							path.Root("external_id"),
 							path.Root("metadata"),
-						},
-					},
-				},
-			},
-		},
-		Blocks: map[string]schema.Block{
-			"domain_data": schema.SetNestedBlock{
-				Description: "Domains with verification state. Conflicts with domains. Do not also manage the same domain with workos_organization_domain: its verify attribute starts DNS TXT verification, while state = verified here records manual verification. Setting state to verified asserts ownership; a verified domain is unique in the environment and controls SSO routing.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"domain": schema.StringAttribute{
-							Description: "The domain name associated with the organization.",
-							Required:    true,
-						},
-						"state": schema.StringAttribute{
-							Description: "Domain verification state. Defaults to pending. Use verified only after confirming ownership.",
-							Optional:    true,
-							Computed:    true,
-							Default:     stringdefault.StaticString("pending"),
-							Validators: []validator.String{
-								stringvalidator.OneOf("pending", "verified"),
-							},
 						},
 					},
 				},

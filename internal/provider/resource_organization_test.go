@@ -189,16 +189,16 @@ func testAccOrganizationResourceConfigWithDomainData(name, domain string) string
 func testAccOrganizationResourceConfigWithDomainDataState(name, domain, state string) string {
 	stateConfig := ""
 	if state != "" {
-		stateConfig = fmt.Sprintf("\n    state  = %q", state)
+		stateConfig = fmt.Sprintf(",\n    state  = %q", state)
 	}
 
 	return fmt.Sprintf(`
 resource "workos_organization" "test" {
   name = %[1]q
 
-  domain_data {
+  domain_data = [{
     domain = %[2]q%[3]s
-  }
+  }]
 }
 `, name, domain, stateConfig)
 }
@@ -209,9 +209,9 @@ resource "workos_organization" "test" {
   name    = %[1]q
   domains = [%[2]q]
 
-  domain_data {
+  domain_data = [{
     domain = %[2]q
-  }
+  }]
 }
 `, name, domain)
 }
