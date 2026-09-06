@@ -31,6 +31,8 @@ type connectApplicationMockAPI struct {
 	counter       int
 	applications  map[string]*client.ConnectApplication
 	organizations map[string]*client.Organization
+	secrets       map[string]*client.ConnectApplicationSecret
+	secretApps    map[string]string
 
 	// omitOptionalFields makes the mock leave optional attributes out of its
 	// responses, as the WorkOS API does for fields that do not apply to a given
@@ -45,6 +47,8 @@ func newConnectApplicationMockAPI(t *testing.T) (*connectApplicationMockAPI, *ht
 	api := &connectApplicationMockAPI{
 		applications:  make(map[string]*client.ConnectApplication),
 		organizations: make(map[string]*client.Organization),
+		secrets:       make(map[string]*client.ConnectApplicationSecret),
+		secretApps:    make(map[string]string),
 	}
 	server := httptest.NewServer(api)
 	t.Cleanup(server.Close)
@@ -68,6 +72,11 @@ func (a *connectApplicationMockAPI) ServeHTTP(w http.ResponseWriter, r *http.Req
 		a.organizationByID(w, r, strings.TrimPrefix(r.URL.Path, "/organizations/"))
 	case r.URL.Path == "/connect/applications" && r.Method == http.MethodPost:
 		a.createApplication(w, r)
+	case strings.HasPrefix(r.URL.Path, "/connect/client_secrets/"):
+		a.clientSecretByID(w, r, strings.TrimPrefix(r.URL.Path, "/connect/client_secrets/"))
+	case strings.HasPrefix(r.URL.Path, "/connect/applications/") && strings.HasSuffix(r.URL.Path, "/client_secrets"):
+		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/connect/applications/"), "/client_secrets")
+		a.applicationClientSecrets(w, r, id)
 	case strings.HasPrefix(r.URL.Path, "/connect/applications/"):
 		a.applicationByID(w, r, strings.TrimPrefix(r.URL.Path, "/connect/applications/"))
 	default:
@@ -180,7 +189,83 @@ func (a *connectApplicationMockAPI) applicationByID(w http.ResponseWriter, r *ht
 		writeJSON(w, http.StatusOK, app)
 	case http.MethodDelete:
 		delete(a.applications, id)
+		for secretID, applicationID := range a.secretApps {
+			if applicationID == id {
+				delete(a.secrets, secretID)
+				delete(a.secretApps, secretID)
+			}
+		}
 		w.WriteHeader(http.StatusAccepted)
+	default:
+		http.Error(w, `{"message":"method not allowed"}`, http.StatusMethodNotAllowed)
+	}
+}
+
+func (a *connectApplicationMockAPI) findApplication(id string) (*client.ConnectApplication, bool) {
+	if app, ok := a.applications[id]; ok {
+		return app, true
+	}
+	for _, app := range a.applications {
+		if app.ClientID == id {
+			return app, true
+		}
+	}
+	return nil, false
+}
+
+func (a *connectApplicationMockAPI) applicationClientSecrets(w http.ResponseWriter, r *http.Request, applicationID string) {
+	app, ok := a.findApplication(applicationID)
+	if !ok {
+		http.Error(w, `{"message":"not found"}`, http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPost:
+		now := time.Now().UTC().Truncate(time.Second)
+		id := a.nextID("secret")
+		plaintext := "plaintext-" + id
+		hint := plaintext
+		if len(hint) > 6 {
+			hint = hint[:6]
+		}
+		secret := &client.ConnectApplicationSecret{
+			ID:         id,
+			Object:     "connect_application_secret",
+			SecretHint: hint,
+			Secret:     plaintext,
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}
+		stored := *secret
+		stored.Secret = ""
+		a.secrets[id] = &stored
+		a.secretApps[id] = app.ID
+		writeJSON(w, http.StatusCreated, secret)
+	case http.MethodGet:
+		listed := make([]client.ConnectApplicationSecret, 0)
+		for secretID, ownerID := range a.secretApps {
+			if ownerID == app.ID {
+				listed = append(listed, *a.secrets[secretID])
+			}
+		}
+		writeJSON(w, http.StatusOK, listed)
+	default:
+		http.Error(w, `{"message":"method not allowed"}`, http.StatusMethodNotAllowed)
+	}
+}
+
+func (a *connectApplicationMockAPI) clientSecretByID(w http.ResponseWriter, r *http.Request, id string) {
+	if _, ok := a.secrets[id]; !ok {
+		http.Error(w, `{"message":"not found"}`, http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodDelete:
+		delete(a.secrets, id)
+		delete(a.secretApps, id)
+		w.WriteHeader(http.StatusNoContent)
 	default:
 		http.Error(w, `{"message":"method not allowed"}`, http.StatusMethodNotAllowed)
 	}
