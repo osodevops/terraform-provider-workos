@@ -21,7 +21,7 @@ func (c *Client) PreflightAccountConfiguration(ctx context.Context, environmentI
 	if c.apiKey != "" {
 		restRoles, err := c.ListEnvironmentRoles(ctx)
 		if err != nil {
-			return fmt.Errorf("cannot verify the REST API key's environment from its role IDs; no resources may mutate")
+			return fmt.Errorf("cannot verify the REST API key's environment from its role IDs; no resources may mutate: %w", err)
 		}
 		matched := make(map[string]bool)
 		for _, role := range restRoles.Data {

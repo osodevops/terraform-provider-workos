@@ -294,7 +294,7 @@ func ValidateAuthkitConfiguration(config *AuthkitConfiguration) error {
 		seen := make(map[string]bool)
 		for _, value := range list.values {
 			if !validConfigurationURL(value, false) || seen[value] {
-				return fmt.Errorf("%s must contain unique absolute HTTP(S) URLs without credentials, wildcards, or fragments", list.name)
+				return fmt.Errorf("%s must contain unique absolute HTTP(S) URLs without credentials or fragments; a single wildcard is only allowed in the left-most host label or as the port of a localhost/loopback URL", list.name)
 			}
 			seen[value] = true
 			if value == list.defaultURI {
@@ -304,27 +304,82 @@ func ValidateAuthkitConfiguration(config *AuthkitConfiguration) error {
 		if !found {
 			return fmt.Errorf("the default URI must be a member of %s", list.name)
 		}
+		if strings.Contains(list.defaultURI, "*") {
+			return fmt.Errorf("the default URI in %s cannot contain a wildcard", list.name)
+		}
 	}
 	for _, origin := range config.CORSOrigins {
 		if !validConfigurationURL(origin, true) {
-			return fmt.Errorf("cors_origins must contain HTTP(S) origins without paths, queries, credentials, wildcards, or fragments")
+			return fmt.Errorf("cors_origins must contain HTTP(S) origins without paths, queries, credentials, or fragments; a single wildcard is only allowed in the left-most host label or as the port of a localhost/loopback origin")
 		}
 	}
-	if !validConfigurationURL(config.InitiateLoginURI, false) {
+	if strings.Contains(config.InitiateLoginURI, "*") || !validConfigurationURL(config.InitiateLoginURI, false) {
 		return fmt.Errorf("initiate_login_uri must be an absolute HTTP(S) URL without credentials, wildcards, or fragments")
 	}
 	return nil
 }
 
+// validConfigurationURL accepts absolute HTTP(S) URLs without credentials or
+// fragments. One wildcard is accepted where WorkOS documents support for it:
+// in the left-most host label (https://*.example.com,
+// https://prefix-*-suffix.example.com) or in place of the port on localhost
+// and loopback hosts (http://localhost:*/callback). The account API dry-runs
+// every URI and origin list before it is written, so server-side rules such
+// as the public-suffix and per-environment wildcard limits stay authoritative.
 func validConfigurationURL(value string, origin bool) bool {
-	u, err := url.Parse(value)
-	if err != nil || strings.TrimSpace(value) != value || strings.ContainsAny(value, "*\r\n\t") || (u.Scheme != "https" && u.Scheme != "http") || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
+	if strings.TrimSpace(value) != value || strings.ContainsAny(value, " \r\n\t") || strings.Count(value, "*") > 1 {
+		return false
+	}
+	parsable, ok := substituteWildcard(value)
+	if !ok {
+		return false
+	}
+	u, err := url.Parse(parsable)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
 		return false
 	}
 	if origin && (u.Path != "" || u.RawQuery != "" || u.ForceQuery) {
 		return false
 	}
 	return true
+}
+
+// substituteWildcard replaces a permitted wildcard with a parsable stand-in
+// and reports whether the wildcard sits in a position WorkOS allows.
+func substituteWildcard(value string) (string, bool) {
+	star := strings.IndexByte(value, '*')
+	if star < 0 {
+		return value, true
+	}
+	schemeEnd := strings.Index(value, "://")
+	if schemeEnd < 0 || star < schemeEnd+3 {
+		return "", false
+	}
+	authorityStart := schemeEnd + 3
+	authorityEnd := len(value)
+	if i := strings.IndexAny(value[authorityStart:], "/?#"); i >= 0 {
+		authorityEnd = authorityStart + i
+	}
+	if star >= authorityEnd {
+		return "", false
+	}
+	authority := value[authorityStart:authorityEnd]
+	if strings.HasSuffix(authority, ":*") {
+		switch strings.TrimSuffix(authority, ":*") {
+		case "localhost", "127.0.0.1", "[::1]":
+			return value[:star] + "1" + value[star+1:], true
+		}
+		return "", false
+	}
+	host := authority
+	if i := strings.LastIndexByte(authority, ':'); i >= 0 && !strings.Contains(authority[i:], "]") {
+		host = authority[:i]
+	}
+	offset := star - authorityStart
+	if offset >= len(host) || strings.Contains(host[:offset], ".") {
+		return "", false
+	}
+	return value[:star] + "wildcard" + value[star+1:], true
 }
 
 func configurationURIInputs(values []string, defaultURI string) []configurationURI {
@@ -348,12 +403,16 @@ func (c *Client) runConfigurationMutation(ctx context.Context, environmentID str
 		return err
 	}
 	actual := result[mutation.field].Type
-	if actual == "" || (mutation.success != "" && actual != mutation.success) {
-		return fmt.Errorf("account API rejected %s; no server message was included", mutation.field)
+	if actual == "" {
+		return fmt.Errorf("account API returned no result for %s", mutation.field)
 	}
+	// Result type names such as InvalidWildcardRedirectUri are safe to surface;
+	// server messages are withheld because they may echo sensitive values.
+	rejected := mutation.success != "" && actual != mutation.success
 	// The catalog does not enumerate this result union; independent readback verifies it.
-	if mutation.success == "" && (strings.Contains(actual, "Error") || strings.Contains(actual, "Failed") || strings.Contains(actual, "NotFound")) {
-		return fmt.Errorf("account API rejected %s; no server message was included", mutation.field)
+	rejected = rejected || (mutation.success == "" && (strings.Contains(actual, "Error") || strings.Contains(actual, "Failed") || strings.Contains(actual, "NotFound")))
+	if rejected {
+		return fmt.Errorf("account API rejected %s with %s; check the configured values against the WorkOS dashboard rules for this environment", mutation.field, actual)
 	}
 	return nil
 }

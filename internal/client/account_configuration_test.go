@@ -146,6 +146,9 @@ func TestAuthkitConfigurationDryRunFailurePreventsAllWrites(t *testing.T) {
 	if err == nil || len(api.Writes) != 0 {
 		t.Fatal("all intended lists must validate before any persistent write")
 	}
+	if !strings.Contains(err.Error(), "setWebOrigins with ValidationFailed") || strings.Contains(err.Error(), "secret-token") {
+		t.Fatalf("rejection must name the result type and withhold the server message: %v", err)
+	}
 }
 
 func TestAuthkitConfigurationReadbackDetectsIgnoredMutation(t *testing.T) {
@@ -409,7 +412,21 @@ func TestValidateAuthkitConfigurationBeforeRequests(t *testing.T) {
 		{"duplicate callbacks", func(c *client.AuthkitConfiguration) { c.RedirectURIs = append(c.RedirectURIs, c.RedirectURIs[0]) }},
 		{"invalid origin", func(c *client.AuthkitConfiguration) { c.CORSOrigins = []string{"https://vigile.example/path"} }},
 		{"origin query", func(c *client.AuthkitConfiguration) { c.CORSOrigins = []string{"https://vigile.example?x"} }},
-		{"wildcard", func(c *client.AuthkitConfiguration) { c.CORSOrigins = []string{"https://*.example"} }},
+		{"misplaced wildcard", func(c *client.AuthkitConfiguration) { c.CORSOrigins = []string{"https://sub.*.example.com"} }},
+		{"two wildcards", func(c *client.AuthkitConfiguration) {
+			c.RedirectURIs = append(c.RedirectURIs, "https://*-*.vigile.example/callback")
+		}},
+		{"wildcard path", func(c *client.AuthkitConfiguration) {
+			c.RedirectURIs = append(c.RedirectURIs, "https://vigile.example/*")
+		}},
+		{"wildcard port on public host", func(c *client.AuthkitConfiguration) {
+			c.LogoutURIs = append(c.LogoutURIs, "https://vigile.example:*/signed-out")
+		}},
+		{"wildcard default", func(c *client.AuthkitConfiguration) {
+			c.RedirectURIs = append(c.RedirectURIs, "https://*.vigile.example/callback")
+			c.DefaultRedirectURI = "https://*.vigile.example/callback"
+		}},
+		{"wildcard initiate login", func(c *client.AuthkitConfiguration) { c.InitiateLoginURI = "https://*.vigile.example/login" }},
 		{"credentials", func(c *client.AuthkitConfiguration) { c.InitiateLoginURI = "https://user:secret@vigile.example/login" }},
 		{"fragment", func(c *client.AuthkitConfiguration) { c.InitiateLoginURI = "https://vigile.example/login#fragment" }},
 	} {
@@ -427,6 +444,15 @@ func TestValidateAuthkitConfigurationBeforeRequests(t *testing.T) {
 	valid.CORSOrigins = []string{}
 	valid.InitiateLoginURI = "http://localhost:3000/login"
 	if err := client.ValidateAuthkitConfiguration(valid); err != nil {
+		t.Fatal(err)
+	}
+	// WorkOS allows one wildcard in the left-most host label, or in place of
+	// the port on localhost/loopback hosts, as long as it is not the default.
+	wildcards := desiredConfiguration()
+	wildcards.RedirectURIs = append(wildcards.RedirectURIs, "https://*.preview.vigile.example/callback", "https://prefix-*-suffix.vigile.example/callback", "http://localhost:*/callback", "http://127.0.0.1:*/callback", "http://[::1]:*/callback")
+	wildcards.LogoutURIs = append(wildcards.LogoutURIs, "https://*.preview.vigile.example/signed-out")
+	wildcards.CORSOrigins = []string{"https://*.preview.vigile.example", "http://localhost:*", "https://vigile.example:8443"}
+	if err := client.ValidateAuthkitConfiguration(wildcards); err != nil {
 		t.Fatal(err)
 	}
 }
