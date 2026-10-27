@@ -16,6 +16,13 @@ description: |-
   an API key is also configured, matches the complete unscoped role ID sets returned by REST and
   GraphQL. Empty or inconsistent evidence prevents every resource operation. Account-only use is
   supported; REST resources still require their own API key.
+  ~> Experimental. The account configuration resources call the WorkOS dashboard ("account
+  plane") GraphQL API through the same operations as the official WorkOS CLI. That API is not a
+  documented, versioned public API: WorkOS gates it per team and may change or remove operations
+  without notice, so pin the provider version. The account access token is the short-lived OAuth
+  access token that workos auth login stores for the CLI. The CLI refreshes it in the
+  background; this provider does not. Supply a current token for each run and expect an HTTP 401
+  diagnostic once it expires. It is not a long-lived CI secret.
   Example Usage
   
   provider "workos" {
@@ -51,6 +58,14 @@ Before exposing a client to resources, the provider verifies the exact account t
 an API key is also configured, matches the complete unscoped role ID sets returned by REST and
 GraphQL. Empty or inconsistent evidence prevents every resource operation. Account-only use is
 supported; REST resources still require their own API key.
+
+~> **Experimental.** The account configuration resources call the WorkOS dashboard ("account
+plane") GraphQL API through the same operations as the official WorkOS CLI. That API is not a
+documented, versioned public API: WorkOS gates it per team and may change or remove operations
+without notice, so pin the provider version. The account access token is the short-lived OAuth
+access token that `workos auth login` stores for the CLI. The CLI refreshes it in the
+background; this provider does not. Supply a current token for each run and expect an HTTP 401
+diagnostic once it expires. It is not a long-lived CI secret.
 
 ## Example Usage
 
@@ -93,7 +108,7 @@ provider "workos" {
 
 ### Optional
 
-- `account_access_token` (String, Sensitive) Account OAuth access token for configuration resources only. Can also be set via WORKOS_ACCOUNT_ACCESS_TOKEN. Never used for REST resources or application runtime.
+- `account_access_token` (String, Sensitive) Account OAuth access token for configuration resources only. Can also be set via WORKOS_ACCOUNT_ACCESS_TOKEN. Never used for REST resources or application runtime. Experimental: this is the short-lived token from the WorkOS CLI session (workos auth login) and is not refreshed by the provider.
 - `account_team_id` (String) Expected WorkOS account team ID. Required with account_access_token and verified before configuration reads and writes. Can also be set via WORKOS_ACCOUNT_TEAM_ID.
 - `api_key` (String, Sensitive) The WorkOS API key (starts with `sk_`). Can also be set via the `WORKOS_API_KEY` environment variable.
 - `application_id` (String) Explicit default AuthKit application ID. Required with account_access_token. All configuration resource targets must match the provider target.

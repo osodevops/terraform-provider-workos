@@ -57,11 +57,17 @@ provider "workos" {
 The configuration resources manage an existing environment and its default AuthKit application.
 They do not create environments, applications, organizations, or users.
 
+> **Experimental.** These two resources use the WorkOS dashboard ("account plane") GraphQL API
+> through the same operations as the official WorkOS CLI. It is not a documented, versioned public
+> API: WorkOS gates it per team and may change it without notice, so pin the provider version.
+
 Supply a separate account OAuth token through `WORKOS_ACCOUNT_ACCESS_TOKEN` and the expected
 team ID through `WORKOS_ACCOUNT_TEAM_ID`. WorkOS must enable account-plane access for that team;
 an expired token or a disabled feature flag stops Terraform before any resource mutation. Keep
 `WORKOS_API_KEY` for existing REST role resources. The account token is a Terraform credential
-and must never be passed to application runtime.
+and must never be passed to application runtime. It is the short-lived access token that
+`workos auth login` stores for the WorkOS CLI; the CLI refreshes it, this provider does not, so
+supply a current token for each run.
 
 ```hcl
 provider "workos" {

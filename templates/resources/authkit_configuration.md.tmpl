@@ -7,6 +7,11 @@ description: |-
 
 # workos_authkit_configuration (Resource)
 
+~> **Experimental.** This resource calls the WorkOS dashboard ("account plane") GraphQL API
+through the same operations as the official WorkOS CLI. That API is not a documented, versioned
+public API: WorkOS gates it per team and may change or remove operations without notice. Expect
+breaking changes and pin the provider version.
+
 Manage login callbacks and their default, logout URLs and their default, allowed CORS origins,
 the initiate-login URL, AuthKit enablement, signup, and waitlist settings on an existing WorkOS environment and its
 default AuthKit application. This resource creates no environments, applications, or customer data.
@@ -18,6 +23,11 @@ Account-plane access must be enabled for the owning WorkOS team. Configure the p
 `WORKOS_ACCOUNT_TEAM_ID`), and explicit `environment_id` and `application_id`. An account token
 does not replace `api_key` for REST resources and must never be used as an application runtime
 credential. The API URL remains `base_url`, defaulting to `https://api.workos.com`.
+
+`account_access_token` is the OAuth access token that `workos auth login` (device flow) stores for
+the WorkOS CLI, in the system keychain or `~/.workos/credentials.json`. It is a short-lived JWT.
+The CLI refreshes it in the background; this provider does not, so supply a current token for each
+run and expect an HTTP 401 diagnostic once it expires. It is not a long-lived CI secret.
 
 Provider configuration verifies the team, its exact environment, the application's membership and
 default status, and `client_id` when configured. If a REST key is supplied, the complete unscoped
@@ -65,10 +75,15 @@ drift through `updateUserlandSettings` with readback verification.
 
 {{ .SchemaMarkdown | trimspace }}
 
-URLs must be absolute HTTP(S) URLs without credentials, wildcards, or fragments. Origins must
-have no path, query, or trailing slash. HTTP supports local development; use HTTPS for public
-origins. This resource deliberately supports explicit web URLs rather than WorkOS wildcard or
-custom-scheme URL features.
+URLs must be absolute HTTP(S) URLs without credentials or fragments. Origins must have no path,
+query, or trailing slash. HTTP supports local development; use HTTPS for public origins. One
+wildcard per value is accepted where WorkOS documents support for it: in the left-most host label
+(`https://*.preview.example.com/callback`, `https://prefix-*-suffix.example.com`) or in place of
+the port on `localhost` and loopback hosts (`http://localhost:*/callback`). A wildcard URI cannot
+be the default redirect or logout URI, and `initiate_login_uri` cannot contain one. WorkOS
+dry-runs every list before it is written, so its remaining rules (no public-suffix domains,
+per-environment wildcard limits, HTTPS-only in production) are enforced server-side and surface
+as an apply error naming the rejected result type. Custom URL schemes are not supported.
 
 Changing the provider target requires explicitly detaching the old singleton first, then updating
 the provider and resource targets together. A resource cannot refresh a target different from its

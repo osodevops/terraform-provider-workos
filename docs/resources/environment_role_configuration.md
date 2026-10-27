@@ -7,6 +7,11 @@ description: |-
 
 # workos_environment_role_configuration (Resource)
 
+~> **Experimental.** This resource calls the WorkOS dashboard ("account plane") GraphQL API
+through the same operations as the official WorkOS CLI. That API is not a documented, versioned
+public API and may change without notice. See [AuthKit configuration](authkit_configuration.md)
+for the credential and token-lifetime requirements.
+
 Choose the default role for an existing environment. Continue to use `workos_environment_role`
 for role definitions and permissions; this singleton changes only the default role configuration.
 It creates no environment, organization, application, or user.

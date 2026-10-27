@@ -38,7 +38,7 @@ func (r *EnvironmentRoleConfigurationResource) Metadata(_ context.Context, req r
 	resp.TypeName = req.ProviderTypeName + "_environment_role_configuration"
 }
 func (r *EnvironmentRoleConfigurationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{Description: "Manages the default role for one environment. Existing workos_environment_role resources continue to own role definitions and permissions. Destroy detaches Terraform ownership with a warning and leaves the remote default unchanged.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{Description: "Experimental: this resource uses the WorkOS dashboard (account) GraphQL API, which is not a public, versioned WorkOS API and may change without notice. Manages the default role for one environment. Existing workos_environment_role resources continue to own role definitions and permissions. Destroy detaches Terraform ownership with a warning and leaves the remote default unchanged.", Attributes: map[string]schema.Attribute{
 		"id":                schema.StringAttribute{Computed: true, Description: "Singleton import ID: environment_id.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 		"environment_id":    configurationTargetAttribute("Exact environment ID belonging to account_team_id; checked before role configuration mutations."),
 		"default_role_slug": schema.StringAttribute{Required: true, Description: "Slug of an existing unscoped environment role. Resolved to a verified role ID in the configured environment before updating the default.", Validators: []validator.String{stringvalidator.LengthAtLeast(1)}},

@@ -71,6 +71,14 @@ an API key is also configured, matches the complete unscoped role ID sets return
 GraphQL. Empty or inconsistent evidence prevents every resource operation. Account-only use is
 supported; REST resources still require their own API key.
 
+~> **Experimental.** The account configuration resources call the WorkOS dashboard ("account
+plane") GraphQL API through the same operations as the official WorkOS CLI. That API is not a
+documented, versioned public API: WorkOS gates it per team and may change or remove operations
+without notice, so pin the provider version. The account access token is the short-lived OAuth
+access token that ` + "`workos auth login`" + ` stores for the CLI. The CLI refreshes it in the
+background; this provider does not. Supply a current token for each run and expect an HTTP 401
+diagnostic once it expires. It is not a long-lived CI secret.
+
 ## Example Usage
 
 ` + "```hcl" + `
@@ -88,7 +96,7 @@ resource "workos_organization" "example" {
 			"environment_id": schema.StringAttribute{Optional: true, Description: "Explicit account configuration environment. Required with account_access_token and checked against the account team and REST key before any resource can mutate."},
 			"application_id": schema.StringAttribute{Optional: true, Description: "Explicit default AuthKit application ID. Required with account_access_token. All configuration resource targets must match the provider target."},
 			"account_access_token": schema.StringAttribute{
-				Description: "Account OAuth access token for configuration resources only. Can also be set via WORKOS_ACCOUNT_ACCESS_TOKEN. Never used for REST resources or application runtime.",
+				Description: "Account OAuth access token for configuration resources only. Can also be set via WORKOS_ACCOUNT_ACCESS_TOKEN. Never used for REST resources or application runtime. Experimental: this is the short-lived token from the WorkOS CLI session (workos auth login) and is not refreshed by the provider.",
 				Optional:    true, Sensitive: true,
 			},
 			"account_team_id": schema.StringAttribute{

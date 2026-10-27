@@ -58,7 +58,7 @@ func configurationTargetAttribute(description string) schema.StringAttribute {
 
 func (r *AuthkitConfigurationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Authoritatively manages the default AuthKit application's complete redirect/logout URI sets, environment CORS origins, initiate-login URI, AuthKit enablement, signup, and waitlist settings. Use one owner per environment. Destroy only detaches Terraform state and leaves all remote settings unchanged, with a warning.",
+		Description: "Experimental: this resource uses the WorkOS dashboard (account) GraphQL API, which is not a public, versioned WorkOS API and may change without notice. Authoritatively manages the default AuthKit application's complete redirect/logout URI sets, environment CORS origins, initiate-login URI, AuthKit enablement, signup, and waitlist settings. Use one owner per environment. Destroy only detaches Terraform state and leaves all remote settings unchanged, with a warning.",
 		Attributes: map[string]schema.Attribute{
 			"id":                   schema.StringAttribute{Computed: true, Description: "Singleton import ID: environment_id/application_id.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"environment_id":       configurationTargetAttribute("Exact environment ID belonging to account_team_id; checked before every configuration mutation."),
