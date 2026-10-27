@@ -5,7 +5,7 @@ Terraform provider for managing [WorkOS](https://workos.com) resources including
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.21 (for development)
+- [Go](https://golang.org/doc/install) >= 1.24 (for development)
 
 ## Installation
 
@@ -51,6 +51,71 @@ provider "workos" {
   base_url  = "https://api.workos.com" # Optional, defaults to production API
 }
 ```
+
+### Configuring AuthKit and the Default Role
+
+The configuration resources manage an existing environment and its default AuthKit application.
+They do not create environments, applications, organizations, or users.
+
+> **Experimental.** These two resources use the WorkOS dashboard ("account plane") GraphQL API
+> through the same operations as the official WorkOS CLI. It is not a documented, versioned public
+> API: WorkOS gates it per team and may change it without notice, so pin the provider version.
+
+Supply a separate account OAuth token through `WORKOS_ACCOUNT_ACCESS_TOKEN` and the expected
+team ID through `WORKOS_ACCOUNT_TEAM_ID`. WorkOS must enable account-plane access for that team;
+an expired token or a disabled feature flag stops Terraform before any resource mutation. Keep
+`WORKOS_API_KEY` for existing REST role resources. The account token is a Terraform credential
+and must never be passed to application runtime. It is the short-lived access token that
+`workos auth login` stores for the WorkOS CLI; the CLI refreshes it, this provider does not, so
+supply a current token for each run.
+
+```hcl
+provider "workos" {
+  client_id      = var.workos_client_id
+  environment_id = var.workos_environment_id
+  application_id = var.workos_application_id
+}
+
+resource "workos_authkit_configuration" "app" {
+  depends_on = [workos_environment_role_configuration.app]
+
+  environment_id       = var.workos_environment_id
+  application_id       = var.workos_application_id
+  redirect_uris        = ["https://app.example.com/callback"]
+  default_redirect_uri = "https://app.example.com/callback"
+  logout_uris          = ["https://app.example.com/signed-out"]
+  default_logout_uri   = "https://app.example.com/signed-out"
+  cors_origins         = ["https://app.example.com"]
+  initiate_login_uri   = "https://app.example.com/login"
+  authkit_enabled      = true
+  allow_signup         = true
+  waitlist_enabled     = false
+}
+
+resource "workos_environment_role" "viewer" {
+  slug        = "viewer"
+  name        = "Viewer"
+  permissions = []
+}
+
+resource "workos_environment_role_configuration" "app" {
+  environment_id    = var.workos_environment_id
+  default_role_slug = workos_environment_role.viewer.slug
+}
+```
+
+The dependency sets the default viewer role before enabling public signup.
+The provider verifies team, environment, application, and REST-key ownership before any resources
+can run. After apply, refresh reads back the managed values; the next plan should show no changes.
+The URI and origin sets are authoritative: omitted entries are removed. Use one configuration
+owner per environment and do not also manage its callbacks with `workos_redirect_uri`.
+
+Import existing configurations and roles before changing them. Destroying either configuration
+singleton **only detaches Terraform ownership**, emits a warning, and leaves remote settings
+unchanged. It does not reset configuration or delete WorkOS data. See
+[AuthKit configuration](docs/resources/authkit_configuration.md) and
+[default role configuration](docs/resources/environment_role_configuration.md) for imports,
+recovery, validation limits, and account API requirements.
 
 ### Managing Organizations
 
@@ -206,6 +271,8 @@ terraform import workos_environment_role.admin admin
 terraform import workos_organization_role.billing_admin org_01HXYZ.../org-billing-admin
 terraform import workos_organization_role_permission.billing_admin_read org_01HXYZ.../org-billing-admin/billing:read
 terraform import workos_redirect_uri.example redir_01HXYZ...
+terraform import workos_authkit_configuration.app environment_01HXYZ.../application_01HXYZ...
+terraform import workos_environment_role_configuration.app environment_01HXYZ...
 terraform import workos_connect_application_client_secret.m2m connect_app_01HXYZ.../connect_app_secret_01HXYZ...
 ```
 
@@ -219,6 +286,8 @@ OpenTofu uses the same import IDs with `tofu import`.
 | `workos_user` | Manages AuthKit users |
 | `workos_organization_membership` | Manages user-organization memberships |
 | `workos_environment_role` | Manages environment-level authorization roles |
+| `workos_authkit_configuration` | Owns complete AuthKit URL/origin sets, enablement, and signup settings for an existing environment |
+| `workos_environment_role_configuration` | Sets an existing environment's default role without changing role definitions |
 | `workos_organization_role` | Manages organization authorization roles |
 | `workos_permission` | Manages environment-level permissions |
 | `workos_organization_role_permission` | Assigns a permission to an organization role |

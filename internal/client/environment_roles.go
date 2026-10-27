@@ -45,6 +45,7 @@ func (c *Client) ListEnvironmentRoles(ctx context.Context) (*EnvironmentRoleList
 	params := url.Values{}
 	applyDefaultPagination(params)
 	path := "/authorization/roles"
+	seenCursors := make(map[string]bool)
 
 	for {
 		var page EnvironmentRoleListResponse
@@ -58,6 +59,10 @@ func (c *Client) ListEnvironmentRoles(ctx context.Context) (*EnvironmentRoleList
 		if page.ListMetadata.After == "" {
 			break
 		}
+		if seenCursors[page.ListMetadata.After] {
+			return nil, fmt.Errorf("environment role pagination repeated a cursor; refusing an incomplete list")
+		}
+		seenCursors[page.ListMetadata.After] = true
 		params.Set("after", page.ListMetadata.After)
 	}
 

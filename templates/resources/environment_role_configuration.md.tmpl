@@ -1,0 +1,64 @@
+---
+page_title: "workos_environment_role_configuration Resource - terraform-provider-workos"
+subcategory: ""
+description: |-
+  Manage an existing WorkOS environment's default role.
+---
+
+# workos_environment_role_configuration (Resource)
+
+~> **Experimental.** This resource calls the WorkOS dashboard ("account plane") GraphQL API
+through the same operations as the official WorkOS CLI. That API is not a documented, versioned
+public API and may change without notice. See [AuthKit configuration](authkit_configuration.md)
+for the credential and token-lifetime requirements.
+
+Choose the default role for an existing environment. Continue to use `workos_environment_role`
+for role definitions and permissions; this singleton changes only the default role configuration.
+It creates no environment, organization, application, or user.
+
+Use the same account OAuth credential, explicit provider target, team feature flag, and ownership
+preflight described in [AuthKit configuration](authkit_configuration.md). The resource's
+`environment_id` must match the provider's verified environment. Use one default-role owner per
+environment; do not also update this default through another writer.
+
+## Example
+
+```terraform
+resource "workos_environment_role" "viewer" {
+  slug        = "viewer"
+  name        = "Viewer"
+  permissions = []
+}
+
+resource "workos_environment_role_configuration" "app" {
+  environment_id    = var.environment_id
+  default_role_slug = workos_environment_role.viewer.slug
+}
+```
+
+The provider resolves the slug against the complete GraphQL environment role array, writes the
+role ID, and reads the actual default back. Role priority, SSO/directory assignment toggles, role
+definitions, and permissions are omitted from the mutation and remain unmanaged by this singleton.
+
+{{ .SchemaMarkdown | trimspace }}
+
+The official catalog declares `UpdateRoleConfigInput.defaultRole` as an undocumented `String`.
+The provider therefore verifies the identifier contract against current data before writing: the
+existing default must match an ID in that environment's role array. A slug-shaped, missing, or
+unknown default is rejected rather than guessed. The requested slug must uniquely resolve to
+another role ID in the same environment. Resource-scoped roles cannot become this default.
+
+## Import and destroy
+
+```shell
+terraform import workos_environment_role.viewer viewer
+terraform import workos_environment_role_configuration.app environment_01EXAMPLE
+```
+
+Import reads existing configuration without changing its default. **Destroy only detaches Terraform
+ownership** and emits a warning. The remote default role, role definitions, permissions, and all
+customer data remain unchanged. Import the same environment ID to resume management.
+
+Failures return an error and retain available observed state. Refresh and retry after restoring
+account access or resolving the invalid role. A successful-looking mutation that does not read back
+the requested default is an error.

@@ -1,0 +1,131 @@
+---
+page_title: "workos_authkit_configuration Resource - terraform-provider-workos"
+subcategory: ""
+description: |-
+  Authoritatively manage the configuration of an existing environment's default AuthKit application.
+---
+
+# workos_authkit_configuration (Resource)
+
+~> **Experimental.** This resource calls the WorkOS dashboard ("account plane") GraphQL API
+through the same operations as the official WorkOS CLI. That API is not a documented, versioned
+public API: WorkOS gates it per team and may change or remove operations without notice. Expect
+breaking changes and pin the provider version.
+
+Manage login callbacks and their default, logout URLs and their default, allowed CORS origins,
+the initiate-login URL, AuthKit enablement, signup, and waitlist settings on an existing WorkOS environment and its
+default AuthKit application. This resource creates no environments, applications, or customer data.
+
+## Prerequisites and ownership
+
+Account-plane access must be enabled for the owning WorkOS team. Configure the provider with
+`account_access_token` (sensitive, or `WORKOS_ACCOUNT_ACCESS_TOKEN`), `account_team_id` (or
+`WORKOS_ACCOUNT_TEAM_ID`), and explicit `environment_id` and `application_id`. An account token
+does not replace `api_key` for REST resources and must never be used as an application runtime
+credential. The API URL remains `base_url`, defaulting to `https://api.workos.com`.
+
+`account_access_token` is the OAuth access token that `workos auth login` (device flow) stores for
+the WorkOS CLI, in the system keychain or `~/.workos/credentials.json`. It is a short-lived JWT.
+The CLI refreshes it in the background; this provider does not, so supply a current token for each
+run and expect an HTTP 401 diagnostic once it expires. It is not a long-lived CI secret.
+
+Provider configuration verifies the team, its exact environment, the application's membership and
+default status, and `client_id` when configured. If a REST key is supplied, the complete unscoped
+role ID sets returned by REST and GraphQL must agree and be nonempty before any resource can run.
+Configuration resource targets must match the verified provider target. Missing, stale, or mismatched
+targets fail closed; the account API's production fallback is never used as target resolution.
+
+Use **one owner per environment**. All URI/origin sets are authoritative, including removal of
+unlisted values. Do not combine this resource with individual `workos_redirect_uri` resources,
+another singleton, or another configuration writer for the same environment.
+
+## Example
+
+The example uses existing IDs and credentials supplied separately to the provider:
+
+```terraform
+provider "workos" {
+  client_id      = var.client_id
+  environment_id = var.environment_id
+  application_id = var.application_id
+}
+
+resource "workos_authkit_configuration" "app" {
+  environment_id       = var.environment_id
+  application_id       = var.application_id
+  redirect_uris        = ["https://app.example.com/callback"]
+  default_redirect_uri = "https://app.example.com/callback"
+  logout_uris          = ["https://app.example.com/signed-out"]
+  default_logout_uri   = "https://app.example.com/signed-out"
+  cors_origins         = ["https://app.example.com"]
+  initiate_login_uri   = "https://app.example.com/login"
+  authkit_enabled      = true
+  allow_signup         = true
+  waitlist_enabled     = false
+}
+```
+
+After apply, a refresh reads the selected defaults and complete sets back from WorkOS. A subsequent
+plan should show no changes. Existing unrelated AuthKit settings are omitted from mutation inputs
+and remain unmanaged.
+
+`authkit_enabled` is required: set it explicitly to enable or disable AuthKit independently of
+signup and waitlist settings. Refresh/import reads the actual value, and apply corrects enablement
+drift through `updateUserlandSettings` with readback verification.
+
+{{ .SchemaMarkdown | trimspace }}
+
+URLs must be absolute HTTP(S) URLs without credentials or fragments. Origins must have no path,
+query, or trailing slash. HTTP supports local development; use HTTPS for public origins. One
+wildcard per value is accepted where WorkOS documents support for it: in the left-most host label
+(`https://*.preview.example.com/callback`, `https://prefix-*-suffix.example.com`) or in place of
+the port on `localhost` and loopback hosts (`http://localhost:*/callback`). A wildcard URI cannot
+be the default redirect or logout URI, and `initiate_login_uri` cannot contain one. WorkOS
+dry-runs every list before it is written, so its remaining rules (no public-suffix domains,
+per-environment wildcard limits, HTTPS-only in production) are enforced server-side and surface
+as an apply error naming the rejected result type. Custom URL schemes are not supported.
+
+Changing the provider target requires explicitly detaching the old singleton first, then updating
+the provider and resource targets together. A resource cannot refresh a target different from its
+verified provider target.
+
+## Import and destroy
+
+Import attaches Terraform to existing configuration without a mutation:
+
+```shell
+terraform import workos_authkit_configuration.app environment_01EXAMPLE/application_01EXAMPLE
+```
+
+Review the resulting plan before applying: the first apply will remove remote entries missing
+from the configured sets. Existing roles can be imported separately with
+`terraform import workos_environment_role.viewer viewer`.
+
+**Destroy only detaches this resource from Terraform state.** The provider emits a warning and
+leaves every remote setting unchanged. There is no remote singleton deletion or reset operation.
+Import the same ID to resume management. No environment, application, or customer data is deleted.
+
+## Failures and recovery
+
+Every intended value is validated locally before mutation. The server then dry-runs all changed
+URI/origin lists before any persistent write. Team/environment/application ownership is checked
+again before each write. URI and logout reads use the application's complete array fields rather
+than capped list queries; incomplete or oversized responses are rejected.
+
+WorkOS does not offer an atomic transaction across these settings. After each write the provider
+reads back configuration. If a later write fails, available observed state is retained, the error is
+reported, and another apply reconciles remaining differences. A transport failure can leave an
+uncertain write outcome; refresh and retry. Terraform may mark a failed initial creation as tainted;
+replacement is safe because singleton destroy only detaches and never resets the remote settings.
+An expired token or HTTP 403 requires a current account credential or restored account-plane/team
+access. Raw server messages and response bodies are not included in configuration diagnostics.
+
+## Account API reference
+
+The native client uses the official WorkOS CLI's
+[GraphQL catalog](https://github.com/workos/cli/blob/main/src/catalog/mcp-catalog.snapshot.json),
+[account bearer transport](https://github.com/workos/cli/blob/main/src/lib/dashboard-graphql.ts), and
+[target validation](https://github.com/workos/cli/blob/main/src/lib/environment-target.ts).
+It uses `setRedirectUris`, `setLogoutUris`, `setWebOrigins`, `updateUserlandApplication`, and
+`updateUserlandSettings`. Account-plane access must be enabled for the team; an environment
+API key alone cannot authenticate these operations.

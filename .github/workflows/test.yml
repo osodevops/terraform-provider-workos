@@ -90,6 +90,28 @@ jobs:
           name: coverage-${{ matrix.go-version }}
           path: coverage.out
 
+  configuration:
+    name: Configuration Tests (Mock WorkOS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.16.6'
+          terraform_wrapper: false
+
+      - name: Verify configuration lifecycle without WorkOS credentials
+        run: go test -count=1 -timeout=10m -run '^TestAccAccountConfiguration_' ./internal/provider
+        env:
+          TF_ACC: '1'
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

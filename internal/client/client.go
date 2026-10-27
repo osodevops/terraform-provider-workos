@@ -35,10 +35,14 @@ const (
 
 // Client is the WorkOS API client
 type Client struct {
-	httpClient *http.Client
-	apiKey     string
-	clientID   string
-	baseURL    string
+	httpClient           *http.Client
+	apiKey               string
+	clientID             string
+	baseURL              string
+	accountAccessToken   string
+	accountTeamID        string
+	accountEnvironmentID string
+	accountApplicationID string
 
 	// Organization role mutations update a priority list shared by every role
 	// in the organization, so concurrent requests must be coordinated.
@@ -47,8 +51,16 @@ type Client struct {
 
 // NewClient creates a new WorkOS API client
 func NewClient(apiKey, clientID, baseURL string) (*Client, error) {
-	if apiKey == "" {
-		return nil, fmt.Errorf("api_key is required")
+	return NewClientWithCredentials(apiKey, clientID, baseURL, "", "")
+}
+
+// NewClientWithCredentials keeps account OAuth separate from the REST API key.
+func NewClientWithCredentials(apiKey, clientID, baseURL, accountAccessToken, accountTeamID string) (*Client, error) {
+	if apiKey == "" && accountAccessToken == "" {
+		return nil, fmt.Errorf("api_key is required unless account_access_token is configured")
+	}
+	if accountAccessToken != "" && accountTeamID == "" {
+		return nil, fmt.Errorf("account_team_id is required with account_access_token")
 	}
 
 	if baseURL == "" {
@@ -59,14 +71,19 @@ func NewClient(apiKey, clientID, baseURL string) (*Client, error) {
 		httpClient: &http.Client{
 			Timeout: DefaultTimeout,
 		},
-		apiKey:   apiKey,
-		clientID: clientID,
-		baseURL:  baseURL,
+		apiKey:             apiKey,
+		clientID:           clientID,
+		baseURL:            baseURL,
+		accountAccessToken: accountAccessToken,
+		accountTeamID:      accountTeamID,
 	}, nil
 }
 
 // doRequest performs an HTTP request with automatic retry on rate limiting
 func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
+	if c.apiKey == "" {
+		return nil, fmt.Errorf("this REST resource requires api_key or WORKOS_API_KEY; account OAuth is configuration-only")
+	}
 	var bodyReader io.Reader
 
 	if body != nil {
