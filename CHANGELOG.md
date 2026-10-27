@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0](https://github.com/osodevops/terraform-provider-workos/compare/v2.5.0...v2.6.0) (2026-10-27)
+
+
+### Features
+
+* add AuthKit and default role configuration resources (review of [#44](https://github.com/osodevops/terraform-provider-workos/issues/44)) ([4c75027](https://github.com/osodevops/terraform-provider-workos/commit/4c75027b0261a3990641bbdc456d37fad4fc0475))
+* manage AuthKit and environment role configuration natively ([1b9790a](https://github.com/osodevops/terraform-provider-workos/commit/1b9790a1a2a8ad461755128d9b71b9509d3b0933))
+
+
+### Bug Fixes
+
+* **authkit:** accept WorkOS wildcard URIs and name rejected result types ([aa8ee4f](https://github.com/osodevops/terraform-provider-workos/commit/aa8ee4ffc811eec884eafa6030fd38fe478df0c1))
+* manage AuthKit enablement explicitly ([e68dd40](https://github.com/osodevops/terraform-provider-workos/commit/e68dd40b6490c1fb50a21ecaacf85cdd6a6e6523))
+* select AuthKit redirects by environment ([b22f2a3](https://github.com/osodevops/terraform-provider-workos/commit/b22f2a33d921cf75d903d7eb8c95359159a180ea))
+
 ## [2.5.0](https://github.com/osodevops/terraform-provider-workos/compare/v2.4.3...v2.5.0) (2026-09-06)
 
 
