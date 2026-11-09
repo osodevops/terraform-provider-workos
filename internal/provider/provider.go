@@ -245,6 +245,8 @@ func (p *WorkOSProvider) Resources(ctx context.Context) []func() resource.Resour
 		NewGroupMembershipResource,
 		NewConnectApplicationResource,
 		NewRedirectURIResource,
+		NewAuthKitOAuthResourceResource,
+		NewJWTTemplateResource,
 		NewConnectApplicationClientSecretResource,
 		NewEnvironmentRoleResource,
 		NewAuthkitConfigurationResource,

@@ -292,6 +292,8 @@ OpenTofu uses the same import IDs with `tofu import`.
 | `workos_permission` | Manages environment-level permissions |
 | `workos_organization_role_permission` | Assigns a permission to an organization role |
 | `workos_redirect_uri` | Manages AuthKit login callback URIs |
+| `workos_authkit_oauth_resource` | Manages MCP resource indicators (RFC 8707) AuthKit accepts as token audiences |
+| `workos_jwt_template` | Manages the environment's JWT template for custom access-token claims |
 | `workos_connect_application_client_secret` | Mints and revokes Connect application client secrets |
 
 ## Data Sources
